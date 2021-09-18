@@ -19,7 +19,7 @@ RTC_DATA_ATTR time_t lastGetLocationTS = 0;  // can use this to throttle
 RTC_DATA_ATTR location currentLocation = {
     DEFAULT_LOCATION_LATITUDE,       // lat
     DEFAULT_LOCATION_LONGDITUDE,     // lon
-    "AEST-10AEDT,M10.1.0,M4.1.0/3",  // timezone
+    DEFAULT_TIMEZONE,  // timezone
     "Melbourne"                      // default location is in Melbourne
 };
 
@@ -757,7 +757,7 @@ uint32_t fnvHash(const char *str) {
 // hashed values. It assumes that the "olson" string is a valid timezone name
 // from the same version of the tzdb as it was compiled for. If passed an
 // invalid string the behaviour is undefined.
-const char *getPosixTZforOlson(const char *olson, char *buf, size_t buflen) {
+const char *getPosixTZforOlson(const char *olson) {
   static_assert(NumZones > 0, "zones should not be empty");
   auto olsonHash = fnvHash(olson) & mask;
   auto i = &zones[0];
@@ -771,9 +771,9 @@ const char *getPosixTZforOlson(const char *olson, char *buf, size_t buflen) {
     }
   }
   if (i->hash == olsonHash) {
-    return strncpy(buf, posix[i->posix], buflen);
+    return posix[i->posix];
   }
-  return nullptr;
+  return "UTC0"; // couldn't find it, use default
 }
 
 const location *getLocation() {
@@ -810,8 +810,9 @@ const location *getLocation() {
       loc.lon = double(responseObject["lon"]);
       strncpy(loc.city, responseObject["city"], sizeof(loc.city));
 
-      auto olsonTZ = (const char *)responseObject["timezone"];
-      if (getPosixTZforOlson(olsonTZ, loc.timezone, sizeof(loc.timezone))) {
+      const char* olsonTZ = static_cast<const char *>(responseObject["timezone"]);
+      loc.timezone = getPosixTZforOlson(olsonTZ);
+      if ( loc.timezone ) {
         currentLocation = loc;
         lastGetLocationTS = now();
         Watchy::err = Watchy::OK;

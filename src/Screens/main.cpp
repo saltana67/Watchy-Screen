@@ -38,6 +38,7 @@
 #include "BadForEye/Watchy_BadForEye.h"
 #include "TypoStyle/TypoStyle.h"
 #include "AnalogGabel/AnalogGabel_V2.h"
+#include "Maze4Watchy/Maze4Watchy.h"
 
 TestScreen testScreen;
 
@@ -70,6 +71,7 @@ TetrisScreen tetrisScreen;
 BadForEye badForEyeScreen;
 TypoStyle typoStyleScreen;
 AnalogGabel_V2 analogGabel_V2Screen;
+Maze4Watchy maze4WatchyScreen;
 
 WeatherScreen weatherScreen;
 IconScreen battery(&rle_battery, "battery", OptimaLTStd22pt7b);
@@ -103,6 +105,7 @@ CarouselItem carouselItems[] = {
                                 {&analogGabel_V2Screen, nullptr},
                                 {&tetrisScreen, nullptr},
                                 {&badForEyeScreen, nullptr},
+                                {&maze4WatchyScreen, nullptr},
                                 {&typoStyleScreen, nullptr},
                                 {&timeScreen, nullptr},
                                 {&weather, &weatherScreen},

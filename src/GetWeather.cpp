@@ -12,11 +12,14 @@ RTC_DATA_ATTR weatherData currentWeather = {.temperature = 22,
                                             .weatherConditionCode = 800};
 RTC_DATA_ATTR time_t lastGetWeatherTS = 0;
 
-weatherData getWeather() {
+weatherData getWeather(boolean forceNow) {
   // only update if WEATHER_UPDATE_INTERVAL has elapsed i.e. 30 minutes
-  if (lastGetWeatherTS &&
+  log_d("forceNow: %d, lastGetWeatherTS: %d, now() - lastGetWeatherTS: %d, WEATHER_UPDATE_INTERVAL: %d, check yelds: %d", 
+          forceNow, lastGetWeatherTS,now() - lastGetWeatherTS, WEATHER_UPDATE_INTERVAL, (lastGetWeatherTS && (now() - lastGetWeatherTS < WEATHER_UPDATE_INTERVAL)));
+  if ((!forceNow) && lastGetWeatherTS &&
       (now() - lastGetWeatherTS < WEATHER_UPDATE_INTERVAL)) {
     // too soon to update, just re-use existing values. Not an error
+    log_d("RATE_LIMITED");
     Watchy::err = Watchy::RATE_LIMITED;
     return currentWeather;
   }
@@ -24,7 +27,7 @@ weatherData getWeather() {
     Watchy::err = Watchy::WIFI_FAILED;
     log_e("Wifi connect failed");
     // No WiFi, return RTC Temperature (this isn't actually useful...)
-    uint8_t temperature = Watchy::RTC.temperature() / 4;  // celsius
+    uint8_t temperature = Watchy::sensor.readTemperature(); //TODO !!!! Watchy::RTC.temperature() / 4;  // celsius
     if (strcmp(TEMP_UNIT, "imperial") == 0) {
       temperature = temperature * 9. / 5. + 32.;  // fahrenheit
     }

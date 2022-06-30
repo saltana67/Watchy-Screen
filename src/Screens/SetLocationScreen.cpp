@@ -4,11 +4,13 @@
 #include "GetLocation.h"
 #include "IPAddress.h"
 
-RTC_DATA_ATTR enum GetLocationState {
+enum GetLocationState {
   ready,
   waiting,
   done
-} getLocationState = ready;
+};
+
+RTC_DATA_ATTR GetLocationState getLocationState = ready;
 
 void printLocation(const Watchy_GetLocation::location *loc) {
   Watchy::display.printf("\nsuccess\nlat %.4f\nlon %.4f",

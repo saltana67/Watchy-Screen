@@ -1,0 +1,192 @@
+#include <Arduino.h>
+#include <Wire.h>
+
+#include <Rtc_Pcf8563.h>
+#include <TimeLib.h>
+#include <time.h>
+#include "sys/time.h"
+#include "config.h"
+
+#include <unistd.h>
+
+
+namespace WatchyRTC2 {
+
+Rtc_Pcf8563 rtc_pcf;
+tmElements_t currentTime;
+
+void WatchyRTC_read(tmElements_t &tm) {
+    tm.Month = rtc_pcf.getMonth();
+    if (tm.Month == 0) {  // PCF8563 POR sets month = 0 for some reason
+      tm.Month = 1;
+      tm.Year = 21;
+    } else {
+      tm.Year = rtc_pcf.getYear();
+    }
+    tm.Day = rtc_pcf.getDay();
+    tm.Wday = rtc_pcf.getWeekday() + 1;
+    tm.Hour = rtc_pcf.getHour();
+    tm.Minute = rtc_pcf.getMinute();
+    tm.Second = rtc_pcf.getSecond();
+}
+
+void WatchyRTC_readNew(tmElements_t &tm) {
+   byte century = 0;
+   rtc_pcf.getDateTime(tm.Day, tm.Wday, tm.Month, century, tm.Year,
+                            tm.Hour, tm.Minute, tm.Second);
+   ++tm.Wday;
+}
+
+int WatchyRTC_getDayOfWeek(int d, int m, int y) {
+  // Sakamoto's method
+  static int t[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
+  y -= m < 3;
+  return (y + y / 4 - y / 100 + y / 400 + t[m - 1] + d) % 7;
+}
+void WatchyRTC_set(tmElements_t tm) {
+  //void Rtc_Pcf8563::setDate(byte day, byte weekday, byte mon, byte century, byte year)
+    rtc_pcf.setDateTime(tm.Day,
+                    WatchyRTC_getDayOfWeek(tm.Day, tm.Month, /*tm.Year + YEAR_OFFSET_PCF*/ tmYearToCalendar(tm.Year)),
+                    tm.Month, 0, tm.Year,
+                    tm.Hour, tm.Minute, tm.Second);
+    //rtc_pcf.setTime(tm.Hour, tm.Minute, tm.Second);
+    rtc_pcf.clearAlarm();
+}
+
+
+void init(esp_sleep_wakeup_cause_t wakeup_reason) {
+
+  {
+  uint64_t wire_begin = micros();
+  Wire.begin((int)SDA, (int)SCL, 400000UL);
+  uint64_t elapsed = micros() - wire_begin;
+      log_i("Wire.begin took %llu.%03llums ***", elapsed / 1000,
+        elapsed % 1000);
+  }
+#define RTC_PCF_ADDR 0x51
+  
+  byte error;
+
+  Wire.beginTransmission(RTC_PCF_ADDR);
+  error = Wire.endTransmission();
+  if (error != 0) {
+    log_e("RTC Error: %d", error);
+  }
+  
+
+  if( wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED ) {
+      log_i("wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED, setting time");
+      currentTime.Year = CalendarYrToTm(2022);
+      currentTime.Month = 6;
+      currentTime.Day = 23;
+      currentTime.Hour = 12;
+      currentTime.Minute = 34;
+      currentTime.Wday = dowThursday;
+      uint64_t set_start = micros();
+      WatchyRTC_set(currentTime);
+      uint64_t elapsed = micros() - set_start;
+      log_i("setting time took %llu.%03llums ***", elapsed / 1000,
+        elapsed % 1000);
+  }
+
+  {
+    uint64_t read_start = micros();
+  WatchyRTC_readNew(currentTime);
+    uint64_t elapsed = micros() - read_start;
+    log_i("reading time took %llu.%03llums ***", elapsed / 1000,
+        elapsed % 1000);
+  log_i("RTC Current time: %04d-%02d-%02d %02d:%02d:%02d %s", 
+        tmYearToCalendar(currentTime.Year),currentTime.Month, currentTime.Day, 
+        currentTime.Hour,currentTime.Minute, currentTime.Second, 
+        dayShortStr(currentTime.Wday));
+
+    time_t tmpTime = makeTime(currentTime);
+    tmElements_t testTime;
+
+    /* 
+    read_start = micros();   
+  WatchyRTC_readNew(testTime);
+    elapsed = micros() - read_start;
+    log_i("reading test time took %llu.%03llums ***", elapsed / 1000,
+        elapsed % 1000);
+  log_i("RTC test time: %04d-%02d-%02d %02d:%02d:%02d %s", 
+        tmYearToCalendar(testTime.Year),testTime.Month, testTime.Day, 
+        testTime.Hour,testTime.Minute, testTime.Second, 
+        dayShortStr(testTime.Wday));
+
+    time_t tmpTime = makeTime(testTime);
+    breakTime(tmpTime, testTime);
+  log_i("rebroken test time: %04d-%02d-%02d %02d:%02d:%02d %s", 
+        tmYearToCalendar(testTime.Year),testTime.Month, testTime.Day, 
+        testTime.Hour,testTime.Minute, testTime.Second, 
+        dayShortStr(testTime.Wday));
+
+    */
+    setenv("TZ", "CET-1CEST,M3.5.0/2,M10.5.0/ 3", 1);
+    tzset();
+    setTime(tmpTime);          // set system time
+    timeval tv = {.tv_sec=tmpTime};
+    settimeofday(&tv, nullptr);    // set posix
+    /*
+    tmpTime = now();
+    breakTime(tmpTime, testTime);
+  log_i("now() time: %04d-%02d-%02d %02d:%02d:%02d %s", 
+        tmYearToCalendar(testTime.Year),testTime.Month, testTime.Day, 
+        testTime.Hour,testTime.Minute, testTime.Second, 
+        dayShortStr(testTime.Wday));
+
+
+    setenv("TZ", "CST6CDT,M3.2.0,M11.1.0", 1);
+    tzset();
+    
+    tmpTime = now();
+    breakTime(tmpTime, testTime);
+  log_i("US/CDT now() time: %04d-%02d-%02d %02d:%02d:%02d %s", 
+        tmYearToCalendar(testTime.Year),testTime.Month, testTime.Day, 
+        testTime.Hour,testTime.Minute, testTime.Second, 
+        dayShortStr(testTime.Wday));
+    */
+  }
+
+  if( wakeup_reason == ESP_SLEEP_WAKEUP_EXT0 ){
+//    rtc_pcf.clearTimer();
+    rtc_pcf.clearAlarm();
+//    rtc_pcf.clearSquareWave();
+  }
+
+  //long running 
+  /*
+  for( int i = 0; i < 2000; i++ ){
+    rtc_pcf.getDateTime();
+    rtc_pcf.getStatus1();
+  }
+  */
+
+
+  //TMR_1Hz TMR_1MIN
+  //rtc_pcf.setTimer(1, TMR_1MIN, true);
+  //rtc_pcf.setAlarm((currentTime.Minute+1)%60,RTCC_NO_ALARM,RTCC_NO_ALARM,RTCC_NO_ALARM);
+	//log_i("Setup ESP32 to wake up on minute %d", (currentTime.Minute+1)%60);
+
+//  rtc_pcf.setTimer(15);
+//	log_i("Setup ESP32 to wake up on rtc timer %d", 15);
+
+
+  rtc_pcf.setAlarmNextMinute();
+	log_i("Setup ESP32 to wake up on rtc next minute alarm");
+
+  esp_sleep_enable_ext0_wakeup(RTC_PIN, 0);
+
+ #define uS_TO_S_FACTOR 1000000  //Conversion factor for micro seconds to seconds
+ #define TIME_TO_SLEEP  10        //Time ESP32 will go to sleep (in seconds)
+
+//Set timer to TIME_TO_SLEEP seconds
+//	esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
+//	log_i("Setup ESP32 to sleep for every %d Seconds", TIME_TO_SLEEP);
+
+//TODO   deepSleep();  
+
+}
+
+
+}

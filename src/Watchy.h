@@ -21,8 +21,10 @@ extern GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display;
 extern tmElements_t currentTime;
 extern Screen *screen;
 void init();
-void initTime(String datetime = "");
+void initTime(boolean initialReset = false /*String datetime = ""*/);
 void deepSleep();
+tmElements_t getLocalTime(tmElements_t &t);
+tm getLocalTime(tm &t);
 
 // components can register to be called whenever we wake up
 typedef void (*OnWakeCallback)(const esp_sleep_wakeup_cause_t wakeup_reason);

@@ -9,6 +9,7 @@
 
 #include "interrupt_handler.h"
 #include "Screen.h"
+#include "GetWeather.h"
 
 namespace Watchy_Event {
 
@@ -60,7 +61,13 @@ void Event::handle() {
         Watchy::showWatchFace(true);
         break;
       case LOCATION_UPDATE:
+        Watchy_GetLocation::location oldLocation;
+        oldLocation = Watchy_GetLocation::currentLocation;
         Watchy_GetLocation::currentLocation = loc;
+        log_d("LOCATION_UPDATE\n\tcity     : %.30s\n\ttimezone : %s", Watchy_GetLocation::currentLocation.city, Watchy_GetLocation::currentLocation.timezone);
+        log_d("       prev    \n\tcity     : %.30s\n\ttimezone : %s", oldLocation.city, oldLocation.timezone);
+        log_d("location changed, we hope, force weather update ... ");
+        Watchy_GetWeather::getWeather(true);
         break;
       case TIME_SYNC: 
       {

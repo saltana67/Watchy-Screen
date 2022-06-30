@@ -6,11 +6,13 @@
 #include "OptimaLTStd12pt7b.h"
 #include "Watchy.h"
 
-RTC_DATA_ATTR enum GetWeatherState {
+enum GetWeatherState {
   ready,
   waiting,
   done
-} getWeatherState = ready;
+};
+
+RTC_DATA_ATTR GetWeatherState getWeatherState = ready;
 
 void printWeather(Watchy_GetWeather::weatherData wd) {
   Watchy::display.printf("\nsuccess\nTemp %d\nWeather %d", wd.temperature,

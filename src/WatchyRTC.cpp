@@ -1,204 +1,149 @@
 #include "WatchyRTC.h"
 #include "config.h"
 
-#define RTC_DS_ADDR 0x68
-#define RTC_PCF_ADDR 0x51
-#define YEAR_OFFSET_DS 1970
-#define YEAR_OFFSET_PCF 2000
 
 RTC_DATA_ATTR RTC_REFRESH_t WatchyRTC::_refresh = RTC_REFRESH_NONE;
 
-WatchyRTC::WatchyRTC() 
-  : rtc_ds(false) {}
+WatchyRTC::WatchyRTC(void) : rtc_pcf() {
+}
 
 void WatchyRTC::init() {
+
+  {
+  uint64_t wire_begin = micros();
+  Wire.begin((int)SDA, (int)SCL, 400000UL);
+  uint64_t elapsed = micros() - wire_begin;
+      log_i("Wire.begin took %llu.%03llums ***", elapsed / 1000,
+        elapsed % 1000);
+  }
+  
   byte error;
-  Wire.beginTransmission(RTC_DS_ADDR);
+  Wire.beginTransmission(RTCC_ADDR);
   error = Wire.endTransmission();
-  if (error == 0) {
-    rtcType = DS3231;
-  } else {
-    Wire.beginTransmission(RTC_PCF_ADDR);
-    error = Wire.endTransmission();
-    if (error == 0) {
-      rtcType = PCF8563;
-    } else {
-      log_e("RTC Error: %d", error);
-    }
-  }
+  if (error != 0) {
+    log_e("RTC Error: %d", error);
+  }/*else
+    rtc_pcf = Rtc_Pcf8563();
+  */
 }
 
-void WatchyRTC::config(String datetime) {
-  if (rtcType == DS3231) {
-    _DSConfig(datetime);
-  } else {
-    _PCFConfig(datetime);
-  }
-  setRefresh(RTC_REFRESH_MIN);
+void WatchyRTC::config(tmElements_t *initialTime){
+      rtc_pcf.initClock();
+//    rtc_pcf.zeroClock();
+    if( initialTime ) 
+        set(*initialTime);
 }
 
-void WatchyRTC::clearAlarm() {
-  if (rtcType == DS3231) {
-    rtc_ds.alarm(ALARM_2);
-  } else {
-    rtc_pcf.clearAlarm();  // resets the alarm flag in the RTC
-  }
-}
-
-void WatchyRTC::read(tmElements_t &tm) {
-  if (rtcType == DS3231) {
-    rtc_ds.read(tm);
-    tm.Year = tm.Year - 30;  // reset to offset from 2000
-  } else {
+void WatchyRTC::read(tmElements_t &tm){
+    rtc_pcf.readDateTime();
+    tm.Year = CalendarYrToTm( (rtc_pcf.getCentury() ? 1900 : 2000) + rtc_pcf.getYear() );
     tm.Month = rtc_pcf.getMonth();
-    if (tm.Month == 0) {  // PCF8563 POR sets month = 0 for some reason
-      tm.Month = 1;
-      tm.Year = 21;
-    } else {
-      tm.Year = rtc_pcf.getYear();
-    }
     tm.Day = rtc_pcf.getDay();
     tm.Wday = rtc_pcf.getWeekday() + 1;
     tm.Hour = rtc_pcf.getHour();
     tm.Minute = rtc_pcf.getMinute();
     tm.Second = rtc_pcf.getSecond();
-  }
 }
 
-void WatchyRTC::set(tmElements_t tm) {
-  if (rtcType == DS3231) {
-    tm.Year = tm.Year + 2000 - YEAR_OFFSET_DS;
-    time_t t = makeTime(tm);
-    rtc_ds.set(t);
-  } else {
-    rtc_pcf.setDate(tm.Day,
-                    _getDayOfWeek(tm.Day, tm.Month, tm.Year + YEAR_OFFSET_PCF),
-                    tm.Month, 0, tm.Year);
-    rtc_pcf.setTime(tm.Hour, tm.Minute, tm.Second);
-    clearAlarm();
-  }
+void WatchyRTC::set(tmElements_t tm){
+    byte year = tmYearToCalendar(tm.Year);
+    byte century = 0;
+    if( year < 2000 ){
+      century = 1;
+      year -= 1900;
+    }else
+      year -= 2000;
+
+    rtc_pcf.setDateTime(tm.Day, tm.Wday - 1, tm.Month, century, year, tm.Hour, tm.Minute, tm.Second);
 }
 
-void WatchyRTC::setAlarm(uint8_t minutes, uint8_t hours, uint8_t dayOfWeek) {
-  log_d("setAlarm(%d,%d,%d", minutes, hours, dayOfWeek);
-  if (rtcType == DS3231) {
-    rtc_ds.setAlarm(ALM1_MATCH_MINUTES, 0, minutes, hours, dayOfWeek);
-    rtc_ds.alarmInterrupt(ALARM_1, true);
-  } else {
-    rtc_pcf.setAlarm(minutes, hours, 99, dayOfWeek);
-  }
-}
 
-void WatchyRTC::setRefresh(RTC_REFRESH_t r) {
-  log_d("refresh(%d)", r);
-  if ((r == RTC_REFRESH_SEC) || (r == RTC_REFRESH_MIN)) {
-    // enable wakeup interrupt
+#define PRINTF_BINARY_PATTERN_INT8 "%c%c%c%c%c%c%c%c"
+#define PRINTF_BYTE_TO_BINARY_INT8(i)    \
+    (((i) & 0x80ll) ? '1' : '0'), \
+    (((i) & 0x40ll) ? '1' : '0'), \
+    (((i) & 0x20ll) ? '1' : '0'), \
+    (((i) & 0x10ll) ? '1' : '0'), \
+    (((i) & 0x08ll) ? '1' : '0'), \
+    (((i) & 0x04ll) ? '1' : '0'), \
+    (((i) & 0x02ll) ? '1' : '0'), \
+    (((i) & 0x01ll) ? '1' : '0')
+
+#define PRINTF_COLTROL1_PATTERN "TEST1[0]:mode %s, STOP[5]: RTC %s, TESTC[3]: POR %s"
+#define PRINTF_COLTROL1(i)    \
+    (((i) & (0x01<<7)) ? "EXT_CLK test(1)"  : "normal(0)")    , \
+    (((i) & (0x01<<5)) ? "stopped(1)"       : "runs(0)")      , \
+    (((i) & (0x01<<3)) ? "may be enabled(1)": "disabled(0)")
+
+#define PRINTF_COLTROL2_PATTERN "TI_TP[4]:INT %s, AF[3]: %s, TF[2]: %s, AIE[1] %s, TIE[0]: %s"
+#define PRINTF_COLTROL2(i)    \
+    (((i) & (0x01<<4)) ? "pulses(1)"        : "follows TF(0)")    , \
+    (((i) & (0x01<<3)) ? "active(1)"        : "inactive(0)")      , \
+    (((i) & (0x01<<2)) ? "active(1)"        : "inactive(0)")      , \
+    (((i) & (0x01<<1)) ? "enabled(1)"       : "disabled(0)")      , \
+    (((i) & (0x01<<0)) ? "enabled(1)"       : "disabled(0)")
+
+#define PRINTF_TIMER_COLTROL_PATTERN "TE[7]: %s,  TD[1:0]: %s"
+#define PRINTF_TIMER_COLTROL(i)    \
+    (((i) & (0x01<<7)) ? "enabled(1)"       : "disabled(0)")      , \
+    ( (((i) & 0x03) == TMR_4096HZ) ? "4096HZ(00)" : ( (((i) & 0x03) == TMR_64Hz) ? "64Hz(01)" : ((((i) & 0x03) == TMR_1Hz) ? "1Hz(10)" : "1MIN(11)")  ) )
+
+void WatchyRTC::setRefresh(RTC_REFRESH_t r){
+/*
+  if(rtc_pcf.alarmActive()){
+    rtc_pcf.resetAlarm();
+  }
+  if(rtc_pcf.timerActive()){
+    rtc_pcf.clearTimer();
+  }
+*/
+
+  rtc_pcf.readAll();
+  /*
+  log_d("status 1     : " PRINTF_BINARY_PATTERN_INT8 " : " PRINTF_COLTROL1_PATTERN , PRINTF_BYTE_TO_BINARY_INT8(rtc_pcf.getStatus1()), PRINTF_COLTROL1(rtc_pcf.getStatus1()) );
+  log_d("status 2     : " PRINTF_BINARY_PATTERN_INT8 " : " PRINTF_COLTROL2_PATTERN , PRINTF_BYTE_TO_BINARY_INT8(rtc_pcf.getStatus2()), PRINTF_COLTROL2(rtc_pcf.getStatus2()) );
+  log_d("timer control: " PRINTF_BINARY_PATTERN_INT8 " : " PRINTF_TIMER_COLTROL_PATTERN , PRINTF_BYTE_TO_BINARY_INT8(rtc_pcf.getTimerControl()), PRINTF_TIMER_COLTROL(rtc_pcf.getTimerControl()) );
+  log_d("timer value  : %d", rtc_pcf.getTimerValue() );
+  log_d("timer enabled: %s", rtc_pcf.timerEnabled() ? "true" : "false");
+  log_d("alarm enabled: %s", rtc_pcf.alarmEnabled() ? "true" : "false");
+  */
+  rtc_pcf.clearAlarm();
+  rtc_pcf.clearTimer();
+  rtc_pcf.clearSquareWave();
+
+  /*
+  rtc_pcf.readAll();
+  log_d("status 1     : " PRINTF_BINARY_PATTERN_INT8 PRINTF_COLTROL1_PATTERN , PRINTF_BYTE_TO_BINARY_INT8(rtc_pcf.getStatus1()), PRINTF_COLTROL1(rtc_pcf.getStatus1()) );
+  log_d("status 2     : " PRINTF_BINARY_PATTERN_INT8 PRINTF_COLTROL2_PATTERN , PRINTF_BYTE_TO_BINARY_INT8(rtc_pcf.getStatus2()), PRINTF_COLTROL2(rtc_pcf.getStatus2()) );
+  log_d("timer control: " PRINTF_BINARY_PATTERN_INT8 PRINTF_TIMER_COLTROL_PATTERN , PRINTF_BYTE_TO_BINARY_INT8(rtc_pcf.getTimerControl()), PRINTF_TIMER_COLTROL(rtc_pcf.getTimerControl()) );
+  log_d("timer value  : %d", rtc_pcf.getTimerValue() );
+  log_d("timer enabled: %s", rtc_pcf.timerEnabled() ? "true" : "false");
+  log_d("alarm enabled: %s", rtc_pcf.alarmEnabled() ? "true" : "false");
+  */
+  //rtc_pcf.setTimer(10);
+
+  if( r == RTC_REFRESH_MIN ){
+    byte next_minute = rtc_pcf.getMinute();
+    log_i("minute: %d, next: %d, trimmed: %d", next_minute, next_minute+1, (next_minute+1)%60);
+    next_minute = (++next_minute)%60;
+    log_i("setting alarm for next minute: %d", next_minute);
+    rtc_pcf.setAlarm(next_minute, RTCC_NO_ALARM, RTCC_NO_ALARM, RTCC_NO_ALARM);
+
     esp_sleep_enable_ext0_wakeup(RTC_PIN, 0);
-  } else if ((refresh() == RTC_REFRESH_SEC) || (refresh() == RTC_REFRESH_MIN)) {
-    // disable wakeup interrupt
+  }else if( r == RTC_REFRESH_NONE ){
     esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_EXT0);
+  }else if( r == RTC_REFRESH_FAST ){
+    //log_d("unimplemented refresh: %s (%d)", "RTC_REFRESH_FAST", r);
+  }else if( r == RTC_REFRESH_SEC ){
+    log_e("unimplemented refresh: %s (%d)", "RTC_REFRESH_SEC", r);
   }
-  if (refresh() == r) {
-    return;
-  }
-  if (rtcType == DS3231) {
-    switch (r) {
-      case RTC_REFRESH_SEC:
-        rtc_ds.setAlarm(ALM1_EVERY_SECOND, 0, 0, 0, 0);
-        rtc_ds.alarmInterrupt(1, true);
-        if (refresh() == RTC_REFRESH_MIN) {
-          rtc_ds.alarmInterrupt(2, false);
-        }
-        break;
-      case RTC_REFRESH_MIN:
-        rtc_ds.setAlarm(ALM2_EVERY_MINUTE, 0, 0, 0, 0);
-        rtc_ds.alarmInterrupt(2, true);
-        if (refresh() == RTC_REFRESH_SEC) {
-          rtc_ds.alarmInterrupt(1, false);
-        }
-        break;
-      default:  // either fast or none
-        rtc_ds.alarmInterrupt(1, false);
-        rtc_ds.alarmInterrupt(2, false);
-        break;
-    }
-  } else {
-    switch (r) {
-      case RTC_REFRESH_SEC:
-        rtc_pcf.setTimer(1, TMR_1Hz, true);
-        break;
-      case RTC_REFRESH_MIN:
-        rtc_pcf.setTimer(1, TMR_1MIN, true);
-        break;
-      default:  // either fast or none
-        rtc_pcf.clearTimer();
-        break;
-    }
-  }
+
   WatchyRTC::_refresh = r;
+  log_d("refresh returns, refresh: %d", WatchyRTC::_refresh);
 }
 
-uint8_t WatchyRTC::temperature() {
-  if (rtcType == DS3231) {
-    return rtc_ds.temperature();
-  } else {
-    return 255;  // error
-  }
+void WatchyRTC::clearAlarm(){
+  rtc_pcf.clearAlarm();
 }
 
-void WatchyRTC::_DSConfig(String datetime) {
-  if (datetime != "") {
-    tmElements_t tm;
-    tm.Year =
-        _getValue(datetime, ':', 0).toInt() -
-        YEAR_OFFSET_DS;  // offset from 1970, since year is stored in uint8_t
-    tm.Month = _getValue(datetime, ':', 1).toInt();
-    tm.Day = _getValue(datetime, ':', 2).toInt();
-    tm.Hour = _getValue(datetime, ':', 3).toInt();
-    tm.Minute = _getValue(datetime, ':', 4).toInt();
-    tm.Second = _getValue(datetime, ':', 5).toInt();
-    time_t t = makeTime(tm);
-    rtc_ds.set(t);
-  }
-  // https://github.com/JChristensen/DS3232RTC
-  rtc_ds.squareWave(SQWAVE_NONE);  // disable square wave output
-}
 
-void WatchyRTC::_PCFConfig(String datetime) {
-  if (datetime != "") {
-    int Year = _getValue(datetime, ':', 0).toInt();
-    int Month = _getValue(datetime, ':', 1).toInt();
-    int Day = _getValue(datetime, ':', 2).toInt();
-    int Hour = _getValue(datetime, ':', 3).toInt();
-    int Minute = _getValue(datetime, ':', 4).toInt();
-    int Second = _getValue(datetime, ':', 5).toInt();
-    // day, weekday, month, century(1=1900, 0=2000), year(0-99)
-    rtc_pcf.setDate(Day, _getDayOfWeek(Day, Month, Year), Month, 0,
-                    Year - YEAR_OFFSET_PCF);  // offset from 2000
-    // hr, min, sec
-    rtc_pcf.setTime(Hour, Minute, Second);
-  }
-}
-
-int WatchyRTC::_getDayOfWeek(int d, int m, int y) {
-  // Sakamoto's method
-  static int t[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
-  y -= m < 3;
-  return (y + y / 4 - y / 100 + y / 400 + t[m - 1] + d) % 7;
-}
-
-String WatchyRTC::_getValue(String data, char separator, int index) {
-  int found = 0;
-  int strIndex[] = {0, -1};
-  int maxIndex = data.length() - 1;
-
-  for (int i = 0; i <= maxIndex && found <= index; i++) {
-    if (data.charAt(i) == separator || i == maxIndex) {
-      found++;
-      strIndex[0] = strIndex[1] + 1;
-      strIndex[1] = (i == maxIndex) ? i + 1 : i;
-    }
-  }
-
-  return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
-}

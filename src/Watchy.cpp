@@ -8,6 +8,7 @@
 #include "Sensor.h"
 #include "WatchyErrors.h"
 #include "esp_wifi.h"
+#include "GetWeather.h"
 
 namespace Watchy {
 
@@ -61,7 +62,36 @@ void handleButtonPress() {
 
 QueueHandle_t i2cMutex = xSemaphoreCreateRecursiveMutex();
 
-tmElements_t currentTime;  // should probably be in SyncTime
+tmElements_t currentTime
+= {
+      .Second = 0,
+      .Minute = 30,
+      .Hour = 13,
+      .Wday = dowFriday,
+      .Day = 30,
+      .Month = 4,
+      .Year = CalendarYrToTm(2022)
+}
+;  // should probably be in SyncTime
+
+tmElements_t getLocalTime(tmElements_t &currentTime) {
+    tm localTime;
+    getLocalTime(localTime);
+    currentTime.Day = localTime.tm_mday;
+    currentTime.Month = localTime.tm_mon + 1;
+    currentTime.Year = localTime.tm_year - 70;
+    currentTime.Wday = localTime.tm_wday + 1;
+    currentTime.Hour = localTime.tm_hour;
+    currentTime.Minute = localTime.tm_min;
+    currentTime.Second = localTime.tm_sec;
+    return currentTime;
+}
+
+tm getLocalTime(tm &localTime) {
+    time_t tNow = now();
+    localtime_r(&tNow, &localTime);
+    return localTime;
+}
 
 // doesn't persist over deep sleep. don't care.
 std::vector<OnWakeCallback> owcVec;
@@ -95,17 +125,32 @@ const char *wakeupReasonToString(esp_sleep_wakeup_cause_t wakeup_reason) {
 
 uint64_t start;
 
-void initTime(String datetime) {
+void initTime(boolean initialReset) {
   static bool done;
   if (done) { return; }
-  Wire.begin(SDA, SCL);  // init i2c
+
+  //Wire.begin((int)SDA, (int)SCL, 400000UL);
+
   RTC.init();
   // sync ESP32 clocks to RTC
-  RTC.config(datetime);
-  RTC.read(currentTime);
+  if(initialReset)
+    RTC.config(&currentTime);
+  else
+    RTC.read(currentTime);
+  RTC.setRefresh(RTC_REFRESH_MIN);
+
+  /*
   log_i("RTC Current time: %02d/%02d/%02d %02d:%02d:%02d %d", currentTime.Day,
         currentTime.Month, currentTime.Year, currentTime.Hour,
         currentTime.Minute, currentTime.Second, currentTime.Wday);
+  */
+
+  log_i("RTC Current time: %04d-%02d-%02d %s %02d:%02d:%02d",
+        tmYearToCalendar(currentTime.Year),currentTime.Month, currentTime.Day, 
+        dayShortStr(currentTime.Wday),
+        currentTime.Hour,currentTime.Minute, currentTime.Second
+        );
+
   setenv("TZ", Watchy_GetLocation::currentLocation.timezone, 1);
   tzset();
   time_t t = makeTime(currentTime);
@@ -115,14 +160,44 @@ void initTime(String datetime) {
   done = true;
 }
 
+void initTimeOld(String datetime) {
+  static bool done;
+  if (done) { return; }
+  //Wire.begin(SDA, SCL);  // init i2c
+  Wire.begin((int)SDA, (int)SCL, 400000UL);
+
+  RTC.init();
+  // sync ESP32 clocks to RTC
+  //RTC.config(datetime);
+  RTC.readNew(currentTime);
+  log_i("RTC Current time: %02d/%02d/%02d %02d:%02d:%02d %d", currentTime.Day,
+        currentTime.Month, currentTime.Year, currentTime.Hour,
+        currentTime.Minute, currentTime.Second, currentTime.Wday);
+  //TODO setenv("TZ", Watchy_GetLocation::currentLocation.timezone, 1);
+  tzset();
+  time_t t = makeTime(currentTime);
+  setTime(t);
+  timeval tv = {t, 0};
+  settimeofday(&tv, nullptr);
+  done = true;
+}
+
+
 void init() {
   start = micros();
   Watchy_Event::BackgroundTask initTask("init", nullptr);
   initTask.add();
   esp_sleep_wakeup_cause_t wakeup_reason =
       esp_sleep_get_wakeup_cause();  // get wake up reason
-  log_i("reason %s", wakeupReasonToString(wakeup_reason));
-  initTime();
+  log_i("reason %s (%d)", wakeupReasonToString(wakeup_reason), wakeup_reason);
+
+  boolean reinit = (
+                      (wakeup_reason <= ESP_SLEEP_WAKEUP_UNDEFINED)
+                    ||(wakeup_reason > ESP_SLEEP_WAKEUP_UART)
+  );
+
+  initTime( reinit );
+
 
   for (auto &&owc : owcVec) {
     owc(wakeup_reason);
@@ -149,6 +224,8 @@ void init() {
       showWatchFace(false);  // full update on reset
       break;
   }
+  //TODO -< showWatchFace(false);
+
   initTask.remove();
   for (;;) {
     Watchy_Event::Event::handleAll();
@@ -159,6 +236,8 @@ void init() {
       showWatchFace(true);
     }
   }
+  //TODO WatchyRTC2::init(wakeup_reason);
+  //TODO RTC.setRefresh(RTC_REFRESH_MIN);
   Watchy::deepSleep();
 }
 
@@ -174,12 +253,15 @@ void deepSleep() {
 }
 
 void showWatchFace(bool partialRefresh, Screen *s) {
+  uint64_t start = micros();
   display.init(0, false);  //_initial_refresh to false to prevent full update on init
   display.setFullWindow();
   display.setTextColor((s->bgColor == GxEPD_WHITE ? GxEPD_BLACK : GxEPD_WHITE));
   display.setCursor(0, 0);
   s->show();
   display.display(partialRefresh);  // partial refresh
+  uint64_t elapsed = micros() - start;
+  log_d("took %llu.%03llums", elapsed / 1000,elapsed % 1000);
 }
 
 const Screen *getScreen() { return screen; }

@@ -25,7 +25,7 @@ class WatchyRTC {
  public:
   WatchyRTC();
   void init();
-  void config(tmElements_t *initialTime = nullptr);
+  void config(tmElements_t currentTime);
   void clearAlarm();
   void read(tmElements_t &tm);
   void readNew(tmElements_t &tm);

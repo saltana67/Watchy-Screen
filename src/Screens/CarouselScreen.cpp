@@ -25,6 +25,8 @@ void CarouselScreen::show() {
 void CarouselScreen::menu() {
   if (items[index].child != nullptr) {
     Watchy::setScreen(items[index].child);
+  } else {
+    items[index].splash->menu();
   }
 }
 

@@ -3,7 +3,7 @@
 #include <functional>
 #include <vector>
 
-#include <FreeRTOS.h>
+#include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <sys/time.h>
 

@@ -1,4 +1,4 @@
-#include "BlufiScreen.h"
+//#include "BlufiScreen.h"
 #include "BuzzScreen.h"
 #include "CarouselScreen.h"
 #include "Events.h"
@@ -12,10 +12,12 @@
 #include "SetLocationScreen.h"
 #include "SetTimeScreen.h"
 #include "ShowBatteryScreen.h"
-#include "ShowBluetoothScreen.h"
+
+//#include "ShowBluetoothScreen.h"
 #include "ShowOrientationScreen.h"
 #include "ShowStepsScreen.h"
 #include "ShowWifiScreen.h"
+
 #include "SyncTime.h"
 #include "SyncTimeScreen.h"
 #include "TimeScreen.h"
@@ -27,42 +29,64 @@
 #include "icons.h"
 
 #include <time.h>
+#include "GetWeather.h"
+
+#include "TestScreen.h"
+#include "SevenSeg/SevenSegScreen.h"
+#include "Chronometer/ChronometerScreen.h"
+#include "Tetris/TetrisScreen.h"
+#include "BadForEye/Watchy_BadForEye.h"
+#include "TypoStyle/TypoStyle.h"
+#include "AnalogGabel/AnalogGabel_V2.h"
+
+TestScreen testScreen;
 
 SetTimeScreen setTimeScreen;
-BlufiScreen blufiScreen;
+//BlufiScreen blufiScreen;
 UpdateFWScreen updateFWScreen;
 SyncTimeScreen syncTimeScreen;
 SetLocationScreen setLocationScreen;
 GetWeatherScreen getWeatherScreen;
 BuzzScreen buzzScreen;
 OTAScreen otaScreen;
-
-MenuItem menuItems[] = {{"Set Time", &setTimeScreen},
-                        {"Blufi", &blufiScreen},
+MenuItem menuItems[] = {
+                        {"Set Time", &setTimeScreen},
+                      //  {"Blufi", &blufiScreen},
                         {"Update (OTA)", &otaScreen},
                         {"Update (BLE)", &updateFWScreen},
                         {"Sync Time", &syncTimeScreen},
                         {"Set Location", &setLocationScreen},
                         {"Get Weather", &getWeatherScreen},
-                        {"Buzz", &buzzScreen}};
+                        {"Buzz", &buzzScreen}
+                      };
 
 MenuScreen menu(menuItems, sizeof(menuItems) / sizeof(menuItems[0]));
 
+
 TimeScreen timeScreen;
+SevenSegScreen sevenSegScreen;
+ChronometerScreen chronometerScreen;
+TetrisScreen tetrisScreen;
+BadForEye badForEyeScreen;
+TypoStyle typoStyleScreen;
+AnalogGabel_V2 analogGabel_V2Screen;
+
 WeatherScreen weatherScreen;
 IconScreen battery(&rle_battery, "battery", OptimaLTStd22pt7b);
 IconScreen steps(&rle_steps, "steps", OptimaLTStd22pt7b);
 IconScreen orientation(&rle_orientation, "orientation", OptimaLTStd22pt7b);
-IconScreen bluetooth(&rle_bluetooth, "bluetooth", OptimaLTStd22pt7b);
+//IconScreen bluetooth(&rle_bluetooth, "bluetooth", OptimaLTStd22pt7b);
 IconScreen wifi(&rle_wifi, "wifi", OptimaLTStd22pt7b);
 IconScreen settings(&rle_settings, "settings", OptimaLTStd22pt7b);
 IconScreen text(&rle_text, "wrap text", OptimaLTStd22pt7b);
 ImageScreen weather(cloud, 96, 96, "weather", OptimaLTStd22pt7b);
+
 ShowBatteryScreen showBattery;
-ShowBluetoothScreen showBluetooth;
+//ShowBluetoothScreen showBluetooth;
 ShowOrientationScreen showOrientation;
 ShowStepsScreen showSteps;
 ShowWifiScreen showWifi;
+
 WrappedTextScreen wrappedTextScreen(
     "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod "
     "tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim "
@@ -73,26 +97,40 @@ WrappedTextScreen wrappedTextScreen(
     "it goes away on screen refresh?        \t    \t         \r                "
     "      \n     that's deep sleep.");
 
-CarouselItem carouselItems[] = {{&timeScreen, nullptr},
+CarouselItem carouselItems[] = {
+                                {&sevenSegScreen, nullptr},
+                                {&chronometerScreen, nullptr},
+                                {&analogGabel_V2Screen, nullptr},
+                                {&tetrisScreen, nullptr},
+                                {&badForEyeScreen, nullptr},
+                                {&typoStyleScreen, nullptr},
+                                {&timeScreen, nullptr},
                                 {&weather, &weatherScreen},
                                 {&battery, &showBattery},
                                 {&steps, &showSteps},
                                 {&orientation, &showOrientation},
                                 {&text, &wrappedTextScreen},
-                                {&bluetooth, &showBluetooth},
+                            //    {&bluetooth, &showBluetooth},
                                 {&wifi, &showWifi},
-                                {&settings, &menu}};
+                                {&settings, &menu}
+                                };
 
 CarouselScreen carousel(carouselItems,
                         sizeof(carouselItems) / sizeof(carouselItems[0]));
+
 
 Watchy_Event::BackgroundTask timeSync("timeSync", []() {
   Watchy_SyncTime::syncTime(Watchy_GetLocation::currentLocation.timezone);
 });
 
+
 Watchy_Event::BackgroundTask getLocation("getLocation", 
   Watchy_GetLocation::getLocation
 );
+
+Watchy_Event::BackgroundTask getWeather("getWeather", []() {
+  Watchy_GetWeather::getWeather();
+});
 
 void setup() {
   Serial.begin(115200);
@@ -114,6 +152,11 @@ void setup() {
   if (Watchy_GetLocation::lastGetLocationTS < SECS_YR_2000) {
     getLocation.begin();
   }
+
+  if (Watchy_GetWeather::lastGetWeatherTS < SECS_YR_2000) {
+    getWeather.begin();
+  }
+
   if (Watchy::screen == nullptr) {
     Watchy::screen = &carousel;
   }

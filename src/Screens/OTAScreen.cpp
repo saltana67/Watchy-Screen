@@ -15,12 +15,6 @@ void OTAScreen::show() {
   Watchy::display.fillScreen(bgColor);
   Watchy::display.setFont(OptimaLTStd12pt7b);
   Watchy::display.println("\nWaiting for OTA");
-  Watchy::display.print("IP: "); Watchy::display.println(WiFi.localIP());
-  Watchy::display.println("Upload new sketch");
-  Watchy::display.println("via OTA uploader");
-  Watchy::display.println("In Arduino or");
-  Watchy::display.println("Platformio now");
-  Watchy::display.display(true);
 
   while (!Watchy::getWiFi()) {
     log_d("Get Wifi failed");
@@ -33,6 +27,15 @@ void OTAScreen::show() {
     delay(5000);
     ESP.restart();
   }
+
+
+
+  Watchy::display.print("IP: "); Watchy::display.println(WiFi.localIP());
+  Watchy::display.println("Upload new sketch");
+  Watchy::display.println("via OTA uploader");
+  Watchy::display.println("In Arduino or");
+  Watchy::display.println("Platformio now");
+  Watchy::display.display(true);
 
   // Port defaults to 3232
   // ArduinoOTA.setPort(3232);
@@ -83,4 +86,9 @@ void OTAScreen::show() {
   ArduinoOTA.begin();
 
   for (;;) { ArduinoOTA.handle(); delay(1); }
+}
+
+void OTAScreen::back(){
+  ArduinoOTA.end();
+  Screen::back();
 }

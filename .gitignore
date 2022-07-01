@@ -1,4 +1,5 @@
 # don't check in credentials
+src/secrets.h
 secrets.h
 wifi_config.h
 

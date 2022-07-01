@@ -59,7 +59,7 @@ void ShowBatteryScreen::show() {
     const float v = batteryReadings[(nextReading + i) % batteryReadingssz];
     if (v > 0.0) {
       // map [4200 .. 3200) onto [100..0)
-      const int h = int(mapRange(v, 4.200, 3.200, height, 0.0) + 0.5);
+      const int h = int(Watchy::mapBatteryVoltage(v, height, 0.0) + 0.5);
       log_d("drawLine(%d, %d, %d, %d, fgColor)", x0 + i, y0 + height - h, x0 + i, y0 + height);
       Watchy::display.drawLine(x0 + i, y0 + height - h, x0 + i, y0 + height,
                                fgColor);

@@ -33,4 +33,16 @@ float getBatteryVoltage() {
       4;
   return esp_adc_cal_raw_to_voltage(raw, adcChar) * 2.0 / 1000.0;
 }
+
+float getBatteryState(float batteryVoltage) {
+  return mapBatteryVoltage(batteryVoltage, ((float)1.00), ((float)0.00));
+}
+
+float mapBatteryVoltage(const float v,
+               const float outMax, const float outMin) {
+  return (min(BATTERY_MAX_VOLTAGE, max(BATTERY_MIN_VOLTAGE, v)) - BATTERY_MIN_VOLTAGE) / (BATTERY_MAX_VOLTAGE - BATTERY_MIN_VOLTAGE) *
+             (outMax - outMin) +
+         outMin;
+}
+
 }  // namespace Watchy

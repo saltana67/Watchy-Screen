@@ -4,8 +4,11 @@
 
 namespace Watchy_GetWeather {
 
-constexpr const char* OPENWEATHERMAP_APIKEY =
-    "f6554fe2f66ee9d7b4f64a479728695f";// "f058fe1cad2afe8e2ddc5d063a64cecb";  // use your own API key :)
+#ifndef DEFAULT_OPENWEATHERMAP_APIKEY 
+  #define DEFAULT_OPENWEATHERMAP_APIKEY "12345678901234567890123456789012" // use your own API key !!!
+#endif
+constexpr const char* OPENWEATHERMAP_APIKEY = DEFAULT_OPENWEATHERMAP_APIKEY; 
+
 constexpr const char* OPENWEATHERMAP_URL =
     "http://api.openweathermap.org/data/2.5/weather";
 constexpr const char* TEMP_UNIT = "metric";  // use "imperial" for Fahrenheit"

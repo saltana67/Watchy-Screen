@@ -4,6 +4,8 @@
 #define TAG "Watchy"
 #endif
 
+#include "secrets.h"
+
 // hardware
 #define WATCHY_HW_VERSION 20
 

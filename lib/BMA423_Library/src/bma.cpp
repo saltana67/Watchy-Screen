@@ -1,11 +1,17 @@
 #include "bma.h"
 
+#ifdef log_d
+#   define LOG_DEBUG(...)   log_d(__VA_ARGS__)
+#else
+
 #define DEBUGPORT Serial
 #ifdef DEBUGPORT
-#define DEBUG(...)      DEBUGPORT.printf(__VA_ARGS__)
+#define LOG_DEBUG(...)      DEBUGPORT.printf(__VA_ARGS__)
 #else
-#define DEBUG(...)
+#define LOG_DEBUG(...)
 #endif
+
+#endif //#ifdef log_d
 
 BMA423::BMA423()
 {
@@ -51,12 +57,12 @@ bool BMA423::begin(bma4_com_fptr_t readCallBlack,
     __delayCallBlackFptr(20);
 
     if (bma423_init(&__devFptr) != BMA4_OK) {
-        DEBUG("BMA423 FAIL\n");
+        LOG_DEBUG("BMA423 FAIL\n");
         return false;
     }
 
     if (bma423_write_config_file(&__devFptr) != BMA4_OK) {
-        DEBUG("BMA423 Write Config FAIL\n");
+        LOG_DEBUG("BMA423 Write Config FAIL\n");
         return false;
     }
 
@@ -71,7 +77,7 @@ bool BMA423::begin(bma4_com_fptr_t readCallBlack,
 
 
     if (bma4_set_int_pin_config(&config, BMA4_INTR1_MAP, &__devFptr) != BMA4_OK) {
-        DEBUG("BMA423 SET INT FAIL\n");
+        LOG_DEBUG("BMA423 SET INT FAIL\n");
         return false;
     }
     return true;

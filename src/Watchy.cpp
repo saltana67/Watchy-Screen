@@ -280,6 +280,91 @@ void setScreen(Screen *s) {
 auto wifiMutex = xSemaphoreCreateMutex();
 RTC_DATA_ATTR bool wifiReset = false;
 
+void checkWifiConfig(){
+  log_d("\n\n----");
+
+    const char* modes[] = { "NULL", "STA", "AP", "STA+AP" };
+
+    wifi_mode_t mode;
+    esp_err_t wifiError;
+
+    wifiError = esp_wifi_get_mode(&mode);
+
+    if( wifiError != ESP_OK ){
+      switch(wifiError){
+        case(ESP_ERR_WIFI_NOT_INIT): log_e("esp_wifi_get_mode: ESP_ERR_WIFI_NOT_INIT"); break;
+        case(ESP_ERR_INVALID_ARG)  : log_e("esp_wifi_get_mode: ESP_ERR_INVALID_ARG")  ; break;
+      }
+      return;
+    }
+    log_e("esp_wifi_get_mode: %d : %s", mode, modes[mode]);
+
+    const char* secondChanName[] = { 
+        "WIFI_SECOND_CHAN_NONE"
+      , "WIFI_SECOND_CHAN_ABOVE"
+      , "WIFI_SECOND_CHAN_BELOW"
+    };
+    
+
+    uint8_t primaryChan;
+    wifi_second_chan_t secondChan;
+    wifiError = esp_wifi_get_channel(&primaryChan, &secondChan);
+
+    if( wifiError != ESP_OK ){
+      switch(wifiError){
+        case(ESP_ERR_WIFI_NOT_INIT): log_e("esp_wifi_get_channel: ESP_ERR_WIFI_NOT_INIT"); break;
+        case(ESP_ERR_INVALID_ARG)  : log_e("esp_wifi_get_channel: ESP_ERR_INVALID_ARG")  ; break;
+      }
+      return;
+    }
+    log_d("esp_wifi_get_channel: primary: %d, secondary: %s (%d)", 
+                          primaryChan
+                        , secondChan > WIFI_SECOND_CHAN_BELOW ? "????" : secondChanName[secondChan%WIFI_SECOND_CHAN_BELOW]
+                        , secondChan
+                        );
+
+
+    /*
+        p.print("AP id: ");
+        p.println(wifi_station_get_current_ap_id());
+
+        p.print("Status: ");
+        p.println(wifi_station_get_connect_status());
+    */
+
+    wifi_config_t conf;
+    wifiError = esp_wifi_get_config((wifi_interface_t)WIFI_IF_STA, &conf);
+
+    if( wifiError != ESP_OK ){
+      switch(wifiError){
+        case(ESP_ERR_WIFI_NOT_INIT): log_e("esp_wifi_get_config: ESP_ERR_WIFI_NOT_INIT"); break;
+        case(ESP_ERR_INVALID_ARG)  : log_e("esp_wifi_get_config: ESP_ERR_INVALID_ARG")  ; break;
+        case(ESP_ERR_WIFI_IF)      : log_e("esp_wifi_get_config: ESP_ERR_WIFI_IF")      ; break;
+      }
+      return;
+    }
+//    log_d("esp_wifi_get_channel: primary: %d, secondary: %s", primaryChan, secondChanName[secondChan]);
+
+    const char* ssid = reinterpret_cast<const char*>(conf.sta.ssid);
+    log_d("SSID(%d): %s", ssid?strlen(ssid):0, ssid?ssid:"");
+
+    const char* passphrase = reinterpret_cast<const char*>(conf.sta.password);
+    log_d("PASSWORD(%d): %s", ssid?strlen(passphrase):0, passphrase?passphrase:"");
+
+/*
+    const char* passphrase = reinterpret_cast<const char*>(conf.sta.password);
+    p.print("Passphrase (");
+    p.print(strlen(passphrase));
+    p.print("): ");
+    p.println(passphrase);
+
+    p.print("BSSID set: ");
+    p.println(conf.sta.bssid_set);
+
+*/
+  log_d("\n----\n\n");
+}
+
 bool connectWiFi() {
   // in theory this is re-entrant, but in practice if you call WiFi.begin()
   // while it's still trying to connect, it will return an error. Better
@@ -302,6 +387,7 @@ bool connectWiFi() {
   } else {
     if (WL_CONNECTED ==
         WiFi.waitForConnectResult()) {  // attempt to connect for 10s
+      checkWifiConfig();
       WIFI_CONFIGURED = true;
     } else {  // connection failed, time out
       WIFI_CONFIGURED = false;
@@ -316,6 +402,7 @@ bool connectWiFi() {
 unsigned int wifiConnectionCount = 0;
 
 bool getWiFi() {
+  checkWifiConfig();
   xSemaphoreTake(wifiMutex, portMAX_DELAY);
   if (wifiConnectionCount == 0) {
     if (!connectWiFi()) {

@@ -39,6 +39,8 @@
 #include "TypoStyle/TypoStyle.h"
 #include "AnalogGabel/AnalogGabel_V2.h"
 #include "Maze4Watchy/Maze4Watchy.h"
+#include "QRCodeScreen.h"
+#include "TimezoneScreen.h"
 
 TestScreen testScreen;
 
@@ -72,6 +74,8 @@ BadForEye badForEyeScreen;
 TypoStyle typoStyleScreen;
 AnalogGabel_V2 analogGabel_V2Screen;
 Maze4Watchy maze4WatchyScreen;
+QRCodeScreen qrCodeScreen;
+TimezoneScreen timezoneScreen;
 
 WeatherScreen weatherScreen;
 IconScreen battery(&rle_battery, "battery", OptimaLTStd22pt7b);
@@ -115,6 +119,8 @@ CarouselItem carouselItems[] = {
                                 {&text, &wrappedTextScreen},
                             //    {&bluetooth, &showBluetooth},
                                 {&wifi, &showWifi},
+                                {&qrCodeScreen, nullptr},
+                                {&timezoneScreen, nullptr},
                                 {&settings, &menu}
                                 };
 

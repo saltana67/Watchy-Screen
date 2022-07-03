@@ -1,0 +1,24 @@
+{
+  "name": "BMA423 Library",
+  "version": "0.0.1",
+  "keywords": "BMA432 sensors",
+  "description": "Bosch Sensortec Software library",
+  "repository":
+  {
+    "type": "git",
+    "url": "https://github.com/lewisxhe/BMA423_Library"
+  },
+  "authors":
+  [
+    {
+        "name": "Lewis He",
+        "email": "lewishe@outlook.com",
+        "url": "https://github.com/lewisxhe"
+    }
+  ],
+  "frameworks": "arduino",
+  "platforms": [
+    "espressif8266",
+    "espressif32"
+  ]
+}

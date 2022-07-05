@@ -111,8 +111,9 @@ void bmaConfig() {
   Watchy::sensor.resetStepCounter();
 
   // Turn on feature interrupt
-  Watchy::sensor.enableStepCountInterrupt();
-  Watchy::sensor.enableTiltInterrupt();
+  //TODO: rethink!!  Watchy::sensor.enableStepCountInterrupt();
+  //TODO: rethink!!  Watchy::sensor.enableTiltInterrupt();
   // It corresponds to isDoubleClick interrupt
   Watchy::sensor.enableWakeupInterrupt();
+  Watchy::sensor.setWakeupSensitivity(0x01);
 }

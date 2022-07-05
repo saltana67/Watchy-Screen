@@ -130,16 +130,17 @@ CarouselScreen carousel(carouselItems,
 
 Watchy_Event::BackgroundTask timeSync("timeSync", []() {
   Watchy_SyncTime::syncTime(Watchy_GetLocation::currentLocation.timezone);
-});
+},ESP_PRO_CORE);
 
 
 Watchy_Event::BackgroundTask getLocation("getLocation", 
   Watchy_GetLocation::getLocation
+  ,ESP_PRO_CORE
 );
 
 Watchy_Event::BackgroundTask getWeather("getWeather", []() {
   Watchy_GetWeather::getWeather();
-});
+},ESP_PRO_CORE);
 
 void setup() {
   Serial.begin(115200);

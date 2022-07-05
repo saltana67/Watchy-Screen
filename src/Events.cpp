@@ -154,7 +154,7 @@ void BackgroundTask::begin() {
         b->taskFunction();
         b->kill();
       },
-      name, 4096, reinterpret_cast<void *>(this), tskIDLE_PRIORITY, &task, 1);
+      name, 4096, reinterpret_cast<void *>(this), tskIDLE_PRIORITY, &task, coreID);
   configASSERT(task);
   if (res != pdPASS) {
     log_d("create background task result %d", res);

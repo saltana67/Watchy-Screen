@@ -333,3 +333,14 @@ const char *BMA423::getActivity()
     }
     return "None";
 }
+
+bool BMA423::setWakeupSensitivity(uint8_t sensitivity){
+    return (BMA4_OK == bma423_wakeup_set_sensitivity((sensitivity<0?0:(sensitivity>7?7:sensitivity)), &__devFptr));
+}
+
+uint8_t BMA423::getWakeupSensitivity(){
+    uint8_t sensitivity;
+    if( BMA4_OK == bma423_wakeup_get_sensitivity(&sensitivity, &__devFptr))
+        return sensitivity;
+    return 9;
+}

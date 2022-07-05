@@ -76,6 +76,9 @@ public:
     bool enableAnyNoMotionInterrupt(bool en = true);
     bool enableActivityInterrupt(bool en = true);
 
+    bool    setWakeupSensitivity(uint8_t sensitivity);
+    uint8_t getWakeupSensitivity();
+
 private:
     bma4_com_fptr_t __readRegisterFptr;
     bma4_com_fptr_t __writeRegisterFptr;

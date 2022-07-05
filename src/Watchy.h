@@ -36,6 +36,7 @@ extern void AddOnWakeCallback(const OnWakeCallback owc);
 // are no more references to it
 bool getWiFi();
 void releaseWiFi();
+boolean wifiConnectionAttemptAllowed();
 
 void showWatchFace(bool partialRefresh, Screen *s = Watchy::screen);
 void setScreen(Screen *s);

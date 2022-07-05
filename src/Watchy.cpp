@@ -372,6 +372,59 @@ void checkWifiConfig(){
   log_d("\n----\n\n");
 }
 
+namespace {
+
+RTC_DATA_ATTR time_t  firstUnsuccessfulConnectionTimeTS = 0;
+RTC_DATA_ATTR time_t  lastUnsuccessfulConnectionTimeTS = 0;
+RTC_DATA_ATTR uint8_t unsuccessfulConnectionAttemps = 0;
+RTC_DATA_ATTR time_t  allowedPeriod = 0;
+
+void logUnsuccessfulConnectionAttempt(){
+  time_t n = now();
+  lastUnsuccessfulConnectionTimeTS = n;
+  if( firstUnsuccessfulConnectionTimeTS == 0 )
+    firstUnsuccessfulConnectionTimeTS = lastUnsuccessfulConnectionTimeTS;
+  unsuccessfulConnectionAttemps += unsuccessfulConnectionAttemps>100?0:1;
+
+  if( unsuccessfulConnectionAttemps < 3 ) {
+    allowedPeriod = 30;
+  }else if(unsuccessfulConnectionAttemps < 10){
+    allowedPeriod = 60;
+  }else if(unsuccessfulConnectionAttemps < 20){
+    allowedPeriod = (60*10);
+  }else if(unsuccessfulConnectionAttemps < 30){
+    allowedPeriod = (60*30);
+  }else{
+    allowedPeriod = (60*60);
+  }
+}
+void clearUnsuccessfulConnectionAttemptLog(){
+  unsuccessfulConnectionAttemps = 0;
+}
+
+}
+
+boolean wifiConnectionAttemptAllowed(){
+  log_d("attempts: %d", unsuccessfulConnectionAttemps);
+
+  if( unsuccessfulConnectionAttemps < 1 )
+    return true;
+
+  time_t n = now();
+  time_t fromFirst  = n - firstUnsuccessfulConnectionTimeTS;
+  time_t fromLast   = n - lastUnsuccessfulConnectionTimeTS;
+
+  time_t sLeft   = allowedPeriod - fromLast;
+
+  log_d("attempts: %d, fromLast: %ld, allowedTS: %ld, left: %ld, (left > 0): %d", 
+    unsuccessfulConnectionAttemps, fromLast, allowedPeriod, sLeft, (sLeft > 0));
+
+  if( sLeft > 0 )
+    return false;
+  else
+    return true;
+}
+
 bool connectWiFi() {
   // in theory this is re-entrant, but in practice if you call WiFi.begin()
   // while it's still trying to connect, it will return an error. Better
@@ -391,13 +444,16 @@ bool connectWiFi() {
     // WiFi not setup
 #endif
     WIFI_CONFIGURED = false;
+    logUnsuccessfulConnectionAttempt();
   } else {
     if (WL_CONNECTED ==
         WiFi.waitForConnectResult()) {  // attempt to connect for 10s
       checkWifiConfig();
       WIFI_CONFIGURED = true;
+      clearUnsuccessfulConnectionAttemptLog();
     } else {  // connection failed, time out
       WIFI_CONFIGURED = false;
+      logUnsuccessfulConnectionAttempt();
       // turn off radios
       WiFi.mode(WIFI_OFF);
       btStop();
@@ -411,6 +467,11 @@ unsigned int wifiConnectionCount = 0;
 bool getWiFi() {
   checkWifiConfig();
   xSemaphoreTake(wifiMutex, portMAX_DELAY);
+  if( ! Watchy::wifiConnectionAttemptAllowed() ){
+    log_d("wifiConnectionAttemptAllowed: false");
+    xSemaphoreGive(wifiMutex);
+    return false;
+  }
   if (wifiConnectionCount == 0) {
     if (!connectWiFi()) {
       xSemaphoreGive(wifiMutex);
@@ -433,4 +494,7 @@ void releaseWiFi() {
   }
   xSemaphoreGive(wifiMutex);
 }
+
+
+
 }  // namespace Watchy

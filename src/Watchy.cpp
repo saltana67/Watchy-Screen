@@ -56,6 +56,13 @@ void handleButtonPress() {
       }.send();
       break;
     default:
+      sensor.getINT();
+      boolean accInterrupt = sensor.isDoubleClick();
+      log_d("accInterrupt: %d",accInterrupt);
+      Watchy_Event::Event{
+          .id = Watchy_Event::DOWN_BTN_DOWN,
+          .micros = micros(),
+      }.send();
       break;
   }
 }
@@ -245,7 +252,7 @@ void deepSleep() {
   uint64_t elapsed = micros() - start;
   display.hibernate();
   esp_sleep_enable_ext1_wakeup(
-      BTN_PIN_MASK,
+      BTN_PIN_MASK|ACC_INT_MASK,
       ESP_EXT1_WAKEUP_ANY_HIGH);  // enable deep sleep wake on button press
   log_i("%6d *** sleeping after %llu.%03llums ***\n", millis(), elapsed / 1000,
         elapsed % 1000);

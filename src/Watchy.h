@@ -7,7 +7,7 @@
 #include <Wire.h>
 
 #include "battery.h"
-#include "BLE.h"
+//#include "BLE.h"
 #include "bma.h"
 #include "config.h"
 #include "Events.h"

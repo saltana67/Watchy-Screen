@@ -21,7 +21,7 @@
 #include "SyncTime.h"
 #include "SyncTimeScreen.h"
 #include "TimeScreen.h"
-#include "UpdateFWScreen.h"
+//#include "UpdateFWScreen.h"
 #include "Watchy.h"
 #include "WatchyErrors.h"
 #include "WeatherScreen.h"
@@ -46,7 +46,7 @@ TestScreen testScreen;
 
 SetTimeScreen setTimeScreen;
 //BlufiScreen blufiScreen;
-UpdateFWScreen updateFWScreen;
+//UpdateFWScreen updateFWScreen;
 SyncTimeScreen syncTimeScreen;
 SetLocationScreen setLocationScreen;
 GetWeatherScreen getWeatherScreen;
@@ -56,7 +56,7 @@ MenuItem menuItems[] = {
                         {"Set Time", &setTimeScreen},
                       //  {"Blufi", &blufiScreen},
                         {"Update (OTA)", &otaScreen},
-                        {"Update (BLE)", &updateFWScreen},
+//                        {"Update (BLE)", &updateFWScreen},
                         {"Sync Time", &syncTimeScreen},
                         {"Set Location", &setLocationScreen},
                         {"Get Weather", &getWeatherScreen},

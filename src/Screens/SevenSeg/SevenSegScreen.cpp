@@ -13,9 +13,11 @@ using namespace Watchy;
 
 #define DARKMODE false //true
 
+const uint8_t BATTERY_SEGMENT_COUNT = 3;
 const uint8_t BATTERY_SEGMENT_WIDTH = 7;
 const uint8_t BATTERY_SEGMENT_HEIGHT = 11;
-const uint8_t BATTERY_SEGMENT_SPACING = 9;
+const uint8_t BATTERY_SEGMENT_SPACING = BATTERY_SEGMENT_WIDTH + 2;
+const uint8_t BATTERY_SEGMENTS_WIDTH = (BATTERY_SEGMENT_COUNT * BATTERY_SEGMENT_WIDTH);
 const uint8_t WEATHER_ICON_WIDTH = 48;
 const uint8_t WEATHER_ICON_HEIGHT = 32;
 const uint8_t HOUR_12_24 = 24;
@@ -109,6 +111,7 @@ void SevenSegScreen::drawBattery(){
     display.fillRect(159, 78, 27, BATTERY_SEGMENT_HEIGHT, DARKMODE ? GxEPD_BLACK : GxEPD_WHITE);//clear battery segments
     int8_t batteryLevel = 0;
     float VBAT = getBatteryVoltage();
+/* 
     if(VBAT > 4.1){
         batteryLevel = 3;
     }
@@ -121,9 +124,36 @@ void SevenSegScreen::drawBattery(){
     else if(VBAT <= 3.80){
         batteryLevel = 0;
     }
+ */    
+    float batStat = getBatteryState(VBAT);
+/*
+    if(batStat > 0.7f){
+        batteryLevel = 3;
+    }
+    else if(batStat > 0.4f && batStat <= 0.7f){
+        batteryLevel = 2;
+    }
+    else if(batStat > 0.1f && batStat <= 0.4f){
+        batteryLevel = 1;
+    }
+    else if(batStat <= 0.1f){
+        batteryLevel = 0;
+    }
 
     for(int8_t batterySegments = 0; batterySegments < batteryLevel; batterySegments++){
         display.fillRect(159 + (batterySegments * BATTERY_SEGMENT_SPACING), 78, BATTERY_SEGMENT_WIDTH, BATTERY_SEGMENT_HEIGHT, DARKMODE ? GxEPD_WHITE : GxEPD_BLACK);
+    }
+*/
+    float zeroThreshold = 0.1f;
+
+    for( int8_t batterySegment = 0, fillWidth = (batStat * BATTERY_SEGMENTS_WIDTH) + 0.5f; 
+        (batterySegment < BATTERY_SEGMENT_COUNT) && (fillWidth > 0); 
+        batterySegment++, fillWidth -= BATTERY_SEGMENT_WIDTH){
+        int8_t segmentWidth = ((fillWidth >= BATTERY_SEGMENT_WIDTH) ? BATTERY_SEGMENT_WIDTH : fillWidth );
+        if( segmentWidth < 1 )
+            break;
+        log_d("batterySegment: %d, fillWidth: %d, segmentWidth: %d", batterySegment, fillWidth, segmentWidth);
+        display.fillRect(159 + (batterySegment * BATTERY_SEGMENT_SPACING), 78, segmentWidth, BATTERY_SEGMENT_HEIGHT, DARKMODE ? GxEPD_WHITE : GxEPD_BLACK);
     }
 }
 

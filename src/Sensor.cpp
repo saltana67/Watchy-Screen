@@ -25,6 +25,7 @@ uint16_t _writeRegister(uint8_t address, uint8_t reg, uint8_t *data,
 void bmaConfig() {
   if (Watchy::sensor.begin(_readRegister, _writeRegister, delay) == false) {
     // fail to init BMA
+    log_e("fail to init BMA!!!");
     return;
   }
 

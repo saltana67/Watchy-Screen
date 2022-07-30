@@ -5,6 +5,7 @@
 
 namespace Watchy {
 extern float getBatteryVoltage();
+extern float getTTL(float batteryVoltage);
 extern float getBatteryState(float batteryVoltage);
 extern float mapBatteryVoltage(const float v,
                const float outMax, const float outMin);

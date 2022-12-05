@@ -13,7 +13,7 @@
 #include "SetTimeScreen.h"
 #include "ShowBatteryScreen.h"
 
-//#include "ShowBluetoothScreen.h"
+#include "ShowBluetoothScreen.h"
 #include "ShowOrientationScreen.h"
 #include "ShowStepsScreen.h"
 #include "ShowWifiScreen.h"
@@ -81,14 +81,14 @@ WeatherScreen weatherScreen;
 IconScreen battery(&rle_battery, "battery", OptimaLTStd22pt7b);
 IconScreen steps(&rle_steps, "steps", OptimaLTStd22pt7b);
 IconScreen orientation(&rle_orientation, "orientation", OptimaLTStd22pt7b);
-//IconScreen bluetooth(&rle_bluetooth, "bluetooth", OptimaLTStd22pt7b);
+IconScreen bluetooth(&rle_bluetooth, "bluetooth", OptimaLTStd22pt7b);
 IconScreen wifi(&rle_wifi, "wifi", OptimaLTStd22pt7b);
 IconScreen settings(&rle_settings, "settings", OptimaLTStd22pt7b);
 IconScreen text(&rle_text, "wrap text", OptimaLTStd22pt7b);
 ImageScreen weather(cloud, 96, 96, "weather", OptimaLTStd22pt7b);
 
 ShowBatteryScreen showBattery;
-//ShowBluetoothScreen showBluetooth;
+ShowBluetoothScreen showBluetooth;
 ShowOrientationScreen showOrientation;
 ShowStepsScreen showSteps;
 ShowWifiScreen showWifi;
@@ -117,7 +117,7 @@ CarouselItem carouselItems[] = {
                                 {&steps, &showSteps},
                                 {&orientation, &showOrientation},
                                 {&text, &wrappedTextScreen},
-                            //    {&bluetooth, &showBluetooth},
+                                {&bluetooth, &showBluetooth},
                                 {&wifi, &showWifi},
                                 {&qrCodeScreen, nullptr},
                                 {&timezoneScreen, nullptr},

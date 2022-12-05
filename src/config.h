@@ -52,7 +52,7 @@ constexpr const char * WIFI_AP_SSID = "Watchy AP";
 //set time
 const int YEAR_OFFSET = 1970;
 constexpr const char *NTP_SERVER = "pool.ntp.org";
-constexpr const char *DEFAULT_TIMEZONE = "CET-1CEST,M3.5.0,M10.5.0/3"; // posix format
+constexpr const char *DEFAULT_TIMEZONE = "UTC0"; // posix format
 
 //BLE OTA
 constexpr const char * BLE_DEVICE_NAME = "Watchy BLE OTA";

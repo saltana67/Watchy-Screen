@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Screen.h"
-
+#include "GetLocation.h"
 
 class TimezoneScreen : public Screen {
  public:
@@ -11,5 +11,6 @@ class TimezoneScreen : public Screen {
   static boolean darkMode;
  private:
 	void drawImage(const unsigned char world_map []);
+    void printLocationTimezone(const Watchy_GetLocation::location *loc);
 };
 

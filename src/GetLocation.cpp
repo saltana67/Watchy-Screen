@@ -19,8 +19,9 @@ RTC_DATA_ATTR time_t lastGetLocationTS = 0;  // can use this to throttle
 RTC_DATA_ATTR location currentLocation = {
     DEFAULT_LOCATION_LATITUDE,       // lat
     DEFAULT_LOCATION_LONGDITUDE,     // lon
+    "Etc/UTC", //olsonTimezone
     DEFAULT_TIMEZONE,  // timezone
-    "Melbourne"                      // default location is in Melbourne
+    "UTC"                      // default location is in Melbourne
 };
 
 // built from tzdb version 2021a
@@ -812,6 +813,7 @@ void getLocation() {
       strncpy(loc.city, responseObject["city"], sizeof(loc.city));
 
       const char* olsonTZ = static_cast<const char *>(responseObject["timezone"]);
+      strncpy(loc.olsonTimezone, olsonTZ, sizeof(loc.olsonTimezone));
       loc.timezone = getPosixTZforOlson(olsonTZ);
       if ( loc.timezone ) {
         Watchy_Event::Event{

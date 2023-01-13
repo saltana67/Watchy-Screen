@@ -5,7 +5,79 @@
 #include "driver/ledc.h"
 #include "esp_err.h"
 
-void buzz(){
+#include "hulp.h"
+
+
+void buzz_gpio(){
+  pinMode(VIB_MOTOR_PIN, OUTPUT);
+  // five cycles of 3 buzzes each
+  for (int c = 0; c < 5; c++) {
+    for (int b = 0; b < 3; b++) {
+      digitalWrite(VIB_MOTOR_PIN, true);
+      delay(100);
+      digitalWrite(VIB_MOTOR_PIN, false);
+      delay(100);
+    }
+    delay(600);
+  }
+}
+
+const gpio_num_t VIB_MOTOR_GPIO_NUM = GPIO_NUM_13;
+
+const ulp_insn_t program[] = {
+  I_MOVI(R2,0),
+  M_UPDATE_TICKS(),
+
+  //one stroke
+  I_GPIO_SET(VIB_MOTOR_GPIO_NUM, 1),
+  M_DELAY_MS_20_1000(100),
+  I_GPIO_SET(VIB_MOTOR_GPIO_NUM, 0),
+  M_DELAY_MS_20_1000(100),
+  //one stroke
+  I_GPIO_SET(VIB_MOTOR_GPIO_NUM, 1),
+  M_DELAY_MS_20_1000(100),
+  I_GPIO_SET(VIB_MOTOR_GPIO_NUM, 0),
+  M_DELAY_MS_20_1000(100),
+  //one stroke
+  I_GPIO_SET(VIB_MOTOR_GPIO_NUM, 1),
+  M_DELAY_MS_20_1000(100),
+  I_GPIO_SET(VIB_MOTOR_GPIO_NUM, 0),
+  M_DELAY_MS_20_1000(100),
+
+  M_DELAY_MS_20_1000(600),
+
+  //one stroke
+  I_GPIO_SET(VIB_MOTOR_GPIO_NUM, 1),
+  M_DELAY_MS_20_1000(100),
+  I_GPIO_SET(VIB_MOTOR_GPIO_NUM, 0),
+  M_DELAY_MS_20_1000(100),
+  //one stroke
+  I_GPIO_SET(VIB_MOTOR_GPIO_NUM, 1),
+  M_DELAY_MS_20_1000(100),
+  I_GPIO_SET(VIB_MOTOR_GPIO_NUM, 0),
+  M_DELAY_MS_20_1000(100),
+  //one stroke
+  I_GPIO_SET(VIB_MOTOR_GPIO_NUM, 1),
+  M_DELAY_MS_20_1000(100),
+  I_GPIO_SET(VIB_MOTOR_GPIO_NUM, 0),
+  M_DELAY_MS_20_1000(100),
+
+  //I_HALT(),
+  I_END(),
+};
+
+const ulp_insn_t program_halt[] = {
+  I_END(),
+};
+
+void buzz_ulp(){
+  hulp_configure_pin(VIB_MOTOR_GPIO_NUM, RTC_GPIO_MODE_OUTPUT_ONLY, GPIO_FLOATING, 1);
+  hulp_peripherals_on();
+  ESP_ERROR_CHECK(hulp_ulp_load(program, sizeof(program), 1ULL * 10 * 1000, 0));
+  ESP_ERROR_CHECK(hulp_ulp_run(0));
+}
+
+void buzz_ledc(){
   pinMode(VIB_MOTOR_PIN, OUTPUT);
   ledc_timer_config_t ledc_timer = {
         .speed_mode       = LEDC_LOW_SPEED_MODE,
@@ -53,9 +125,10 @@ void buzz(){
 void BuzzScreen::show() {
   Watchy::RTC.setRefresh(RTC_REFRESH_NONE);
 
-  //buzz();
+  //buzz_ledc();
+  //buzz_ulp();
   
-  pinMode(VIB_MOTOR_PIN, OUTPUT);
+/*   pinMode(VIB_MOTOR_PIN, OUTPUT);
   // five cycles of 3 buzzes each
   for (int c = 0; c < 5; c++) {
     for (int b = 0; b < 3; b++) {
@@ -66,6 +139,8 @@ void BuzzScreen::show() {
     }
     delay(600);
   }
-  
+ */  
+  buzz_gpio();
+
   Screen::back(); // automatically return to parent
 }

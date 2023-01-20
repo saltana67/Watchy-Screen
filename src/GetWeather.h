@@ -11,6 +11,8 @@ constexpr const char* OPENWEATHERMAP_APIKEY = DEFAULT_OPENWEATHERMAP_APIKEY;
 
 constexpr const char* OPENWEATHERMAP_URL =
     "http://api.openweathermap.org/data/2.5/weather";
+constexpr const char* OPENWEATHERMAP_FORECAST_URL =
+    "http://api.openweathermap.org/data/2.5/forecast";
 constexpr const char* TEMP_UNIT = "metric";  // use "imperial" for Fahrenheit"
 const int WEATHER_UPDATE_INTERVAL = 15 * 60;  // 15 minutes in seconds
 
@@ -22,5 +24,6 @@ typedef struct weatherData {
 
 extern weatherData getWeather(boolean forceNow = false);
 extern time_t lastGetWeatherTS; // timestamp of last successful getWeather call
-
+extern void getForecast(boolean forceNow = false);
+extern size_t nr_forecasts;
 }  // namespace Watchy_GetWeather

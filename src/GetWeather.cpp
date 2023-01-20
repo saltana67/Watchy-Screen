@@ -10,7 +10,95 @@
 namespace Watchy_GetWeather {
 RTC_DATA_ATTR weatherData currentWeather = {.temperature = 22,
                                             .weatherConditionCode = 800};
+static const size_t MAX_FORECASTS = 40;
+RTC_DATA_ATTR size_t nr_forecasts = 0; 
+RTC_DATA_ATTR weatherData forecastWeather[MAX_FORECASTS]; 
+
 RTC_DATA_ATTR time_t lastGetWeatherTS = 0;
+
+boolean parseWeatherData( weatherData &weatherData, JSONVar &weatherDataJson ){
+  weatherData.temperature = int(weatherDataJson["main"]["temp"]);
+  weatherData.weatherConditionCode = int(weatherDataJson["weather"][0]["id"]);
+  return true;
+}
+
+void getForecast(boolean forceNow){
+  // only update if WEATHER_UPDATE_INTERVAL has elapsed i.e. 30 minutes
+  log_d("forceNow: %d, lastGetWeatherTS: %d, now() - lastGetWeatherTS: %d, WEATHER_UPDATE_INTERVAL: %d, check yelds: %d", 
+          forceNow, lastGetWeatherTS,now() - lastGetWeatherTS, WEATHER_UPDATE_INTERVAL, (lastGetWeatherTS && (now() - lastGetWeatherTS < WEATHER_UPDATE_INTERVAL)));
+  if ((!forceNow) && lastGetWeatherTS &&
+      (now() - lastGetWeatherTS < WEATHER_UPDATE_INTERVAL)) {
+    // too soon to update, just re-use existing values. Not an error
+    log_d("RATE_LIMITED");
+    Watchy::err = Watchy::RATE_LIMITED;
+    //return currentWeather;
+  }
+  if (!Watchy::getWiFi()) {
+    Watchy::err = Watchy::WIFI_FAILED;
+    log_e("Wifi connect failed");
+    // No WiFi, return RTC Temperature (this isn't actually useful...)
+  }
+
+  // WiFi is connected Use Weather API for live data
+  HTTPClient http;
+  http.setConnectTimeout(10000);  // 10 second max timeout
+  const unsigned int weatherQueryURLSize =
+        strlen(OPENWEATHERMAP_FORECAST_URL) 
+      + strlen("?lat=") + 8 
+      + strlen("&lon=") + 8 
+      + strlen("&units=") + strlen(TEMP_UNIT) 
+      + strlen("&cnt=") + 3
+      + strlen("&appid=") + strlen(OPENWEATHERMAP_APIKEY) + 1;
+  char weatherQueryURL[weatherQueryURLSize];
+  Watchy_GetLocation::getLocation(); // maybe update location?
+  snprintf(weatherQueryURL, weatherQueryURLSize,
+           "%s?lat=%.4f&lon=%.4f&units=%s&cnt=%d&appid=%s", OPENWEATHERMAP_FORECAST_URL,
+           Watchy_GetLocation::currentLocation.lat,
+           Watchy_GetLocation::currentLocation.lon, TEMP_UNIT,
+           MAX_FORECASTS,
+           OPENWEATHERMAP_APIKEY);
+  if (!http.begin(weatherQueryURL)) {
+    Watchy::err = Watchy::REQUEST_FAILED;
+    log_e("http.begin failed");
+  } else {
+    int httpResponseCode = http.GET();
+    if (httpResponseCode == 200) {
+      String payload = http.getString();
+      log_i("response payload: %s", payload.c_str());
+      JSONVar responseObject = JSON.parse(payload);
+      //hasOwnProperty("cnt")
+      nr_forecasts = 0;
+      //const char* cnt_s = (const char *) responseObject["cnt"];
+      //log_i("cnt_s: %s", cnt_s);
+      int n = int(responseObject["cnt"]);
+      log_i("n: %d", n);
+      if(n<0)
+        nr_forecasts = 0;
+      else if( n > MAX_FORECASTS )
+        nr_forecasts = MAX_FORECASTS;
+      else
+        nr_forecasts = (size_t) n;
+      
+      log_i("nr_forecasts: %d", nr_forecasts);
+      JSONVar forecastList = responseObject["list"];
+
+      for( int i = 0; i < nr_forecasts; i++){
+        JSONVar forecastJson = forecastList[i];
+        weatherData weatherData = forecastWeather[i];
+        parseWeatherData(weatherData,forecastJson);
+        log_d("forecast %d: temp %d, code %d", i, weatherData.temperature, weatherData.weatherConditionCode);
+      }
+      //lastGetWeatherTS = now();
+      Watchy::err = Watchy::OK;
+    } else {
+      Watchy::err = Watchy::REQUEST_FAILED;
+      log_e("http response %d", httpResponseCode);
+    }
+    http.end();
+  }
+  Watchy::releaseWiFi();
+
+}
 
 weatherData getWeather(boolean forceNow) {
   // only update if WEATHER_UPDATE_INTERVAL has elapsed i.e. 30 minutes

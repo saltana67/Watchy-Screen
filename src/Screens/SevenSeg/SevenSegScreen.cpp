@@ -5,7 +5,7 @@
 #include "DSEG7_Classic_Bold_25.h"
 #include "DSEG7_Classic_Regular_39.h"
 
-#include "icons7Seg.h"
+#include "icons7Seg.bold.h"
 
 #include "GetWeather.h"
 

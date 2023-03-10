@@ -84,7 +84,7 @@ void getForecast(boolean forceNow){
 
       for( int i = 0; i < nr_forecasts; i++){
         JSONVar forecastJson = forecastList[i];
-        weatherData weatherData = forecastWeather[i];
+        weatherData &weatherData = forecastWeather[i];
         parseWeatherData(weatherData,forecastJson);
         log_d("forecast %d: temp %d, code %d", i, weatherData.temperature, weatherData.weatherConditionCode);
       }

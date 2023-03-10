@@ -26,4 +26,5 @@ extern weatherData getWeather(boolean forceNow = false);
 extern time_t lastGetWeatherTS; // timestamp of last successful getWeather call
 extern void getForecast(boolean forceNow = false);
 extern size_t nr_forecasts;
+extern weatherData forecastWeather[];
 }  // namespace Watchy_GetWeather

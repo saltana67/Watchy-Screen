@@ -16,14 +16,27 @@ constexpr const char* OPENWEATHERMAP_FORECAST_URL =
 constexpr const char* TEMP_UNIT = "metric";  // use "imperial" for Fahrenheit"
 const int WEATHER_UPDATE_INTERVAL = 15 * 60;  // 15 minutes in seconds
 
+typedef struct WindData {
+  float   speed;
+  int16_t direction;
+  float   gust;
+} WindData;
+
 typedef struct weatherData {
-  int8_t temperature;
+  int8_t  temperature;
   int16_t weatherConditionCode;
-  char weatherCity[25];
+  int16_t pressure;
+  int8_t  humidity;
+  WindData  wind;
+  int8_t  clouds;
+  int16_t visibility;
+  
+//  char weatherCity[25];
 } weatherData;
 
 extern weatherData getWeather(boolean forceNow = false);
 extern time_t lastGetWeatherTS; // timestamp of last successful getWeather call
+extern weatherData currentWeather;
 extern void getForecast(boolean forceNow = false);
 extern size_t nr_forecasts;
 extern weatherData forecastWeather[];

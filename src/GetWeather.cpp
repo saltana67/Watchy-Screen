@@ -8,8 +8,13 @@
 #include "config.h"  // should be first
 
 namespace Watchy_GetWeather {
-RTC_DATA_ATTR weatherData currentWeather = {.temperature = 22,
-                                            .weatherConditionCode = 800};
+RTC_DATA_ATTR weatherData currentWeather = {
+                                              .temperature = 22
+                                            , .weatherConditionCode = 800
+                                            , .pressure = 1015
+                                            , .humidity = 50
+                                            , .wind = {0.0f, 0, 0.0f}
+                                            };
 static const size_t MAX_FORECASTS = 40;
 RTC_DATA_ATTR size_t nr_forecasts = 0; 
 RTC_DATA_ATTR weatherData forecastWeather[MAX_FORECASTS]; 
@@ -19,6 +24,16 @@ RTC_DATA_ATTR time_t lastGetWeatherTS = 0;
 boolean parseWeatherData( weatherData &weatherData, JSONVar &weatherDataJson ){
   weatherData.temperature = int(weatherDataJson["main"]["temp"]);
   weatherData.weatherConditionCode = int(weatherDataJson["weather"][0]["id"]);
+  weatherData.pressure = int(weatherDataJson["main"]["pressure"]);
+  weatherData.humidity = int(weatherDataJson["main"]["humidity"]);
+
+  weatherData.wind.speed      = (float) double(weatherDataJson["wind"]["speed"]);
+  weatherData.wind.direction  = int(weatherDataJson["wind"]["deg"]);
+  weatherData.wind.gust       = (float) double(weatherDataJson["wind"]["gust"]);
+
+  weatherData.clouds = int(weatherDataJson["clouds"]["all"]);
+  weatherData.visibility = int(weatherDataJson["visibility"]);
+
   return true;
 }
 
@@ -86,7 +101,12 @@ void getForecast(boolean forceNow){
         JSONVar forecastJson = forecastList[i];
         weatherData &weatherData = forecastWeather[i];
         parseWeatherData(weatherData,forecastJson);
-        log_d("forecast %d: temp %d, code %d", i, weatherData.temperature, weatherData.weatherConditionCode);
+        log_d("forecast %d: temp %d, code %d, pressure: %d, humidity: %d, wind: %f %d %f, clouds: %d, visibility: %d", 
+        i, weatherData.temperature, weatherData.weatherConditionCode,
+        weatherData.pressure, weatherData.humidity, 
+        weatherData.wind.speed, weatherData.wind.direction, weatherData.wind.gust,
+        weatherData.clouds, weatherData.visibility 
+        );
       }
       //lastGetWeatherTS = now();
       Watchy::err = Watchy::OK;
@@ -145,12 +165,19 @@ weatherData getWeather(boolean forceNow) {
     int httpResponseCode = http.GET();
     if (httpResponseCode == 200) {
       String payload = http.getString();
-      JSONVar responseObject = JSON.parse(payload);
-      currentWeather.temperature = int(responseObject["main"]["temp"]);
-      currentWeather.weatherConditionCode =
-          int(responseObject["weather"][0]["id"]);
-      strncpy(currentWeather.weatherCity, Watchy_GetLocation::currentLocation.city,
-              sizeof(currentWeather.weatherCity));
+      JSONVar weatherJson = JSON.parse(payload);
+//      currentWeather.temperature = int(responseObject["main"]["temp"]);
+//      currentWeather.weatherConditionCode =
+//          int(responseObject["weather"][0]["id"]);
+      parseWeatherData(currentWeather,weatherJson);
+      log_d("currenWeather: temp %d, code %d, pressure: %d, humidity: %d, wind: %f %d %f, clouds: %d, visibility: %d", 
+        currentWeather.temperature, currentWeather.weatherConditionCode,
+        currentWeather.pressure, currentWeather.humidity, 
+        currentWeather.wind.speed, currentWeather.wind.direction, currentWeather.wind.gust,
+        currentWeather.clouds, currentWeather.visibility 
+        );
+//      strncpy(currentWeather.weatherCity, Watchy_GetLocation::currentLocation.city,
+//              sizeof(currentWeather.weatherCity));
       lastGetWeatherTS = now();
       Watchy::err = Watchy::OK;
     } else {

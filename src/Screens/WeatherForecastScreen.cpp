@@ -2,6 +2,7 @@
 
 #include "GetWeather.h"
 #include "OptimaLTStd12pt7b.h"
+#include "OptimaLTStd7pt7b.h"
 
 using namespace Watchy;
 
@@ -109,6 +110,13 @@ void drawWeatherTimeline(const int16_t x0, const int16_t y0,
 
   float value = getValue(Watchy_GetWeather::currentWeather);
   log_d("first value: %d ", value);
+
+  display.setFont(OptimaLTStd7pt7b);
+  display.setCursor(x0-20, y0+10);
+  display.print(int(max));
+  display.setCursor(x0-20, y0+height-10);
+  display.print(int(min));
+
   int16_t x = x0;
   int16_t y = y0 + height - int( ( ((float)(value - min)) *  scale) + 0.5);
 
@@ -156,7 +164,7 @@ void WeatherForecastScreen::show() {
     weatherConditionCodeToString(wd.weatherConditionCode)
   );
   */
- 
+
   stats_t stats;
 
   initStats(stats,Watchy_GetWeather::currentWeather);
@@ -174,24 +182,78 @@ void WeatherForecastScreen::show() {
 
   uint16_t fgColor = (bgColor == GxEPD_WHITE ? GxEPD_BLACK : GxEPD_WHITE);
 
-  const int16_t height = 50;
+  const int16_t height = 40;
   const int16_t width  = 40 * 3; //3 pixel per forecast
   const int16_t x0 = 200 - width;
 
-  drawWeatherTimeline(x0, 0, width, height, 
+  int16_t y0 = 0;
+  /*
+  display.setFont(OptimaLTStd7pt7b);
+  display.setCursor(x0-20, y0+10);
+  display.print(stats.temperature.max);
+  display.setCursor(x0-20, y0+height);
+  display.print(stats.temperature.min); 
+  */
+
+  display.setFont(OptimaLTStd12pt7b);
+  display.setCursor(0, y0+(height/2)-6);
+  display.print(Watchy_GetWeather::currentWeather.temperature);
+
+  drawWeatherTimeline(x0, y0, width, height, 
                       (float) stats.temperature.min, (float) stats.temperature.max,
                       getTemperature, fgColor);
 
-  drawWeatherTimeline(x0, 50, width, height, 
+  y0 += height;
+  /*
+  display.setFont(OptimaLTStd7pt7b);
+  display.setCursor(x0-40, y0+10);
+  display.print(stats.pressure.max);
+  display.setCursor(x0-40, y0+height);
+  display.print(stats.pressure.min);
+  */
+
+  display.setFont(OptimaLTStd12pt7b);
+  display.setCursor(0, y0+(height/2)-6);
+  display.print(Watchy_GetWeather::currentWeather.pressure);
+
+  drawWeatherTimeline(x0, 40, width, height, 
                       (float) stats.pressure.min, (float) stats.pressure.max,
                       getPressure, fgColor);
 
-  drawWeatherTimeline(x0, 100, width, height, 
+  y0 += height;
+  /*
+  display.setFont(OptimaLTStd7pt7b);
+  display.setCursor(x0-40, y0+10);
+  display.print(stats.humidity.max);
+  display.setCursor(x0-40, y0+height);
+  display.print(stats.humidity.min);
+  */
+  drawWeatherTimeline(x0, y0, width, height, 
                       (float) stats.humidity.min, (float) stats.humidity.max,
                       getHumidity, fgColor);
 
-  drawWeatherTimeline(x0, 150, width, height, 
+  y0 += height;
+  /*
+  display.setFont(OptimaLTStd7pt7b);
+  display.setCursor(x0-40, y0+10);
+  display.print(stats.windSpeed.max);
+  display.setCursor(x0-40, y0+height);
+  display.print(stats.windSpeed.min);
+  */
+  drawWeatherTimeline(x0, y0, width, height, 
                       (float) stats.windSpeed.min, (float) stats.windSpeed.max,
                       getWindSpeed, fgColor);
+
+  y0 += height;
+  /*
+  display.setFont(OptimaLTStd7pt7b);
+  display.setCursor(x0-40, y0+10);
+  display.print(stats.clouds.max);
+  display.setCursor(x0-40, y0+height-10);
+  display.print(stats.clouds.min);
+  */
+  drawWeatherTimeline(x0, y0, width, height, 
+                      (float) stats.clouds.min, (float) stats.clouds.max,
+                      getClouds, fgColor);
 
 }

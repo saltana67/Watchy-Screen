@@ -163,18 +163,59 @@ void drawWeatherTimeline(const int16_t x0, const int16_t y0,
   }
 }
 
+void drawNightBackground(const int16_t x0, const int16_t y0, 
+                    const int16_t width, const int16_t height,
+                    const uint16_t fgColor){
+
+  int16_t offset = 0;
+  for( int16_t y = y0; y < (y0 + height); y += 2 ){
+    for( int16_t x = x0 + offset; x < (x0 + width); x += 2){
+      display.drawPixel(x,y,fgColor);
+    }
+    offset = 1 - offset;
+  }
+}
+
 void drawWeatherTimelineBackground(const int16_t x0, const int16_t y0, 
                     const int16_t width, const int16_t height,
                     const uint16_t fgColor){
 
+
+  //drawNightBackground(x0+10,y0,12, height, fgColor);
+
   int16_t x = x0;
+  int hour = 0;
+
+  boolean night = false;
+  int16_t night_x;
+  
   for( int i = 0; i < Watchy_GetWeather::nr_forecasts; i++ ){
     Watchy_GetWeather::weatherData forecast = Watchy_GetWeather::forecastWeather[i];
+
+    if( forecast.night != night ) {
+      if( night ){
+        /* end of night -> draw night background */
+        log_d("end of night: %d:%d - %d:%d", night_x, y0, (x-night_x)-1, height);
+        drawNightBackground(night_x, y0, (x-night_x)-1, height, fgColor );
+      }else{
+        /* start of night -> save night background x */
+        night_x = x-1;
+        log_d("start of night: %d", night_x);
+      }
+      night = forecast.night;
+    }
+
     tm t;
     localtime_r(&forecast.dt, &t);
-    if( t.tm_hour == 0 ){
-      Watchy::display.drawLine(x, y0,   x, y0+height,    fgColor);
+    log_d("forecast %d: hour: %d, day: %d, month: %d", i, t.tm_hour, t.tm_mday, t.tm_mon);
+    if( t.tm_hour == 0 || (t.tm_hour < hour) ){
+      log_d("midnight line: %d:%d->%d:%d", x, y0, x, y0+height);
+      if( t.tm_hour == 0 )
+        Watchy::display.drawLine(x, y0,   x,   y0+height,    fgColor);
+      else
+        Watchy::display.drawLine(x-1, y0, x-1, y0+height,    fgColor);
     }
+    hour = t.tm_hour;
     x += 3;
   }
 }
@@ -220,8 +261,8 @@ void WeatherForecastScreen::show() {
   const int16_t x0 = 200 - width;
 
   int16_t y0 = 0;
-  
-  drawWeatherTimelineBackground(x0, y0, width, height, fgColor);
+
+  drawWeatherTimelineBackground(x0, y0, width, 200, fgColor);
 
   drawWeatherTimeline(x0, y0, width, height, 
                       0,(float) stats.temperature.min, (float) stats.temperature.max,

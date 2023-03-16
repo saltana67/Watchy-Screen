@@ -35,6 +35,14 @@ boolean parseWeatherData( weatherData &weatherData, JSONVar &weatherDataJson ){
   weatherData.clouds = int(weatherDataJson["clouds"]["all"]);
   weatherData.visibility = int(weatherDataJson["visibility"]);
 
+  weatherData.night = false;
+  const char* pod_s = (const char *) weatherDataJson["sys"]["pod"];
+  if( pod_s != null ) {
+    //log_d("pod_s: %s", pod_s);
+    char pod = pod_s[0]; //char(weatherDataJson["sys"]["pod"]);
+    weatherData.night = (pod == 'n');
+  }
+
   return true;
 }
 
@@ -102,9 +110,9 @@ void getForecast(boolean forceNow){
         JSONVar forecastJson = forecastList[i];
         weatherData &weatherData = forecastWeather[i];
         parseWeatherData(weatherData,forecastJson);
-        log_d("forecast %d: dt: %d, temp %d, code %d, pressure: %d, humidity: %d, wind: %f %d %f, clouds: %d, visibility: %d", 
+        log_d("forecast %d: dt: %d, night: %d, temp %d, code %d, pressure: %d, humidity: %d, wind: %f %d %f, clouds: %d, visibility: %d", 
         i, 
-        weatherData.dt,
+        weatherData.dt, weatherData.night,
         weatherData.temperature, weatherData.weatherConditionCode,
         weatherData.pressure, weatherData.humidity, 
         weatherData.wind.speed, weatherData.wind.direction, weatherData.wind.gust,
@@ -173,8 +181,8 @@ weatherData getWeather(boolean forceNow) {
 //      currentWeather.weatherConditionCode =
 //          int(responseObject["weather"][0]["id"]);
       parseWeatherData(currentWeather,weatherJson);
-      log_d("currenWeather: dt: %d, temp %d, code %d, pressure: %d, humidity: %d, wind: %f %d %f, clouds: %d, visibility: %d", 
-        currentWeather.dt,
+      log_d("currenWeather: dt: %d, night: %d, temp %d, code %d, pressure: %d, humidity: %d, wind: %f %d %f, clouds: %d, visibility: %d", 
+        currentWeather.dt, currentWeather.night,
         currentWeather.temperature, currentWeather.weatherConditionCode,
         currentWeather.pressure, currentWeather.humidity, 
         currentWeather.wind.speed, currentWeather.wind.direction, currentWeather.wind.gust,

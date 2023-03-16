@@ -23,6 +23,7 @@ typedef struct WindData {
 } WindData;
 
 typedef struct weatherData {
+  time_t  dt;
   int8_t  temperature;
   int16_t weatherConditionCode;
   int16_t pressure;

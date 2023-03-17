@@ -30,6 +30,7 @@ using namespace Watchy;
     float_stats windSpeed;
     int8_stats_t clouds;
     int8_stats_t humidity;
+    int8_stats_t pop;
   } stats_t;
 
 void initStats(int8_stats &stats, int8_t value){
@@ -74,6 +75,7 @@ void initStats(stats_t &stats, Watchy_GetWeather::weatherData weather){
     initStats(stats.windSpeed   ,weather.wind.speed);
     initStats(stats.clouds      ,weather.clouds);
     initStats(stats.humidity    ,weather.humidity);
+    initStats(stats.pop         ,weather.pop);
 }
 void updateStats(stats_t &stats, Watchy_GetWeather::weatherData weather){
     updateStats(stats.temperature ,weather.temperature);
@@ -81,6 +83,7 @@ void updateStats(stats_t &stats, Watchy_GetWeather::weatherData weather){
     updateStats(stats.windSpeed   ,weather.wind.speed);
     updateStats(stats.clouds      ,weather.clouds);
     updateStats(stats.humidity    ,weather.humidity);
+    updateStats(stats.pop         ,weather.pop);
 }
 
 float getTemperature(Watchy_GetWeather::weatherData weather) {
@@ -98,9 +101,14 @@ float getWindSpeed(Watchy_GetWeather::weatherData weather) {
 float getHumidity(Watchy_GetWeather::weatherData weather) {
   return (float) weather.humidity;
 }
+float getPop(Watchy_GetWeather::weatherData weather) {
+  return (float) weather.pop;
+}
 
 void drawWeatherTimeline(const int16_t x0, const int16_t y0, 
                     const int16_t width, const int16_t height,
+                    const String label,
+                    const String units,
                     const int precission,
                     const float min, const float max,
                     float (*getValue)(Watchy_GetWeather::weatherData),
@@ -108,18 +116,24 @@ void drawWeatherTimeline(const int16_t x0, const int16_t y0,
   
   const float scale = ((float) height) / (max - min);
   log_d("scale: %f ", scale);
+  const float xScale = ((float) width) / ((float) Watchy_GetWeather::nr_forecasts);
+  log_d("xScale: %f ", xScale);
 
   float value = getValue(Watchy_GetWeather::currentWeather);
   log_d("first value: %d ", value);
 
   display.setFont(OptimaLTStd12pt7b);
-  display.setCursor(0, y0+(height/2)+6);
+  display.setCursor(0, y0+(height/2)+16);
   if( precission > 0 )
     display.print(value,precission);
   else
     display.print(int(value));
 
   display.setFont(OptimaLTStd7pt7b);
+
+  display.setCursor(0, y0+14);
+  display.print(label);
+
   display.setCursor(x0-20, y0+10);
   if( precission > 0 )
     display.print(max,precission);
@@ -130,6 +144,8 @@ void drawWeatherTimeline(const int16_t x0, const int16_t y0,
     display.print(min,precission);
   else
     display.print(int(min));
+  display.setCursor(x0-20, y0+(height/2)+5);
+  display.print(units);
 
   Watchy::display.drawLine(x0, y0,        x0+width, y0        ,fgColor);
   Watchy::display.drawLine(x0, y0+height, x0+width, y0+height ,fgColor);
@@ -144,8 +160,9 @@ void drawWeatherTimeline(const int16_t x0, const int16_t y0,
     const int16_t lastX = x;
     const int16_t lastY = y;
 
-    x += 3;
-    y = y0 + height - int( ( ((float)(value - min)) *  scale) + 0.5);
+    //x += 3;
+    x = x0 + int( ( ((float)(i+1)) * xScale) + 0.5);
+    y = y0 + height - int( ( ((float)(value - min)) * scale) + 0.5);
 
     log_d("value: %d, line: %d:%d  -> %d:%d", value, lastX, lastY, x, y);
   
@@ -188,15 +205,21 @@ void drawWeatherTimelineBackground(const int16_t x0, const int16_t y0,
 
   boolean night = false;
   int16_t night_x;
+  int16_t day_x = x0;
   
   for( int i = 0; i < Watchy_GetWeather::nr_forecasts; i++ ){
     Watchy_GetWeather::weatherData forecast = Watchy_GetWeather::forecastWeather[i];
+
+    tm t;
+    localtime_r(&forecast.dt, &t);
+    display.setFont(OptimaLTStd7pt7b);
 
     if( forecast.night != night ) {
       if( night ){
         /* end of night -> draw night background */
         log_d("end of night: %d:%d - %d:%d", night_x, y0, (x-night_x)-1, height);
         drawNightBackground(night_x, y0, (x-night_x)-1, height, fgColor );
+        night_x = x-1;
       }else{
         /* start of night -> save night background x */
         night_x = x-1;
@@ -205,8 +228,6 @@ void drawWeatherTimelineBackground(const int16_t x0, const int16_t y0,
       night = forecast.night;
     }
 
-    tm t;
-    localtime_r(&forecast.dt, &t);
     log_d("forecast %d: hour: %d, day: %d, month: %d", i, t.tm_hour, t.tm_mday, t.tm_mon);
     if( t.tm_hour == 0 || (t.tm_hour < hour) ){
       log_d("midnight line: %d:%d->%d:%d", x, y0, x, y0+height);
@@ -214,6 +235,20 @@ void drawWeatherTimelineBackground(const int16_t x0, const int16_t y0,
         Watchy::display.drawLine(x, y0,   x,   y0+height,    fgColor);
       else
         Watchy::display.drawLine(x-1, y0, x-1, y0+height,    fgColor);
+
+      if( (x - day_x) > 6 ){
+        //ErrSunMonTueWedThuFriSat
+        //0  1  2  3  4  5  6  7
+        //   1  2  3  4  5  6  0
+        String wDay = dayShortStr(t.tm_wday==0?7:t.tm_wday);
+        wDay = wDay.substring(0,wDay.length() - 1);
+        const int16_t wDay_x = day_x+3;
+        const int16_t wDay_y = y0+9;
+        log_d("tm_wday: %d, day: %s, x: %d, y: %d", t.tm_wday, wDay, wDay_x, wDay_y);
+        display.setCursor(wDay_x, wDay_y);
+        display.print(wDay);
+      }   
+      day_x = x;
     }
     hour = t.tm_hour;
     x += 3;
@@ -256,40 +291,51 @@ void WeatherForecastScreen::show() {
 
   uint16_t fgColor = (bgColor == GxEPD_WHITE ? GxEPD_BLACK : GxEPD_WHITE);
 
-  const int16_t height = 40;
+  const int16_t nrTimelines = 4;
+  const int16_t headerHeight = 12;
+  const int16_t topMargin = 4;
+  const int16_t height = ((display.height() - headerHeight) / nrTimelines) - topMargin;
   const int16_t width  = 40 * 3; //3 pixel per forecast
-  const int16_t x0 = 200 - width;
+  const int16_t x0 = display.width() - width;
 
+  
   int16_t y0 = 0;
 
-  drawWeatherTimelineBackground(x0, y0, width, 200, fgColor);
+  drawWeatherTimelineBackground(x0, y0, width, display.height(), fgColor);
 
+  y0 = headerHeight + topMargin;
   drawWeatherTimeline(x0, y0, width, height, 
-                      0,(float) stats.temperature.min, (float) stats.temperature.max,
+                      "Temp","degC",0,(float) stats.temperature.min, (float) stats.temperature.max,
                       getTemperature, fgColor);
 
-  y0 += height;
+  y0 += height + topMargin;
 
   drawWeatherTimeline(x0, y0, width, height, 
-                      0,(float) stats.pressure.min, (float) stats.pressure.max,
+                      "Pressure","hPa",0,(float) stats.pressure.min, (float) stats.pressure.max,
                       getPressure, fgColor);
 
-  y0 += height;
+  y0 += height+ topMargin;
 
   drawWeatherTimeline(x0, y0, width, height, 
-                      0,(float) stats.humidity.min, (float) stats.humidity.max,
-                      getHumidity, fgColor);
+                      "Clouds", "%", 0,(float) stats.clouds.min, (float) stats.clouds.max,
+                      getClouds, fgColor);
 
-  y0 += height;
+  // y0 += height + topMargin;
+
+  // drawWeatherTimeline(x0, y0, width, height, 
+  //                     "Precip","%",0,(float) stats.pop.min, (float) stats.pop.max,
+  //                     getPop, fgColor);
+
+  // y0 += height + topMargin;
+  // drawWeatherTimeline(x0, y0, width, height, 
+  //                     "Humidity","%",0,(float) stats.humidity.min, (float) stats.humidity.max,
+  //                     getHumidity, fgColor);
+
+  y0 += height + topMargin;
 
   drawWeatherTimeline(x0, y0, width, height, 
-                      0,(float) stats.windSpeed.min, (float) stats.windSpeed.max,
+                      "Wind","m/s", 0,(float) stats.windSpeed.min, (float) stats.windSpeed.max,
                       getWindSpeed, fgColor);
 
-  y0 += height;
-
-  drawWeatherTimeline(x0, y0, width, height, 
-                      0,(float) stats.clouds.min, (float) stats.clouds.max,
-                      getClouds, fgColor);
 
 }

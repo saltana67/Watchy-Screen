@@ -34,6 +34,23 @@ boolean parseWeatherData( weatherData &weatherData, JSONVar &weatherDataJson ){
 
   weatherData.clouds = int(weatherDataJson["clouds"]["all"]);
   weatherData.visibility = int(weatherDataJson["visibility"]);
+  
+  weatherData.pop = 0;
+  
+  if( weatherDataJson.hasOwnProperty("pop"))
+    weatherData.pop = int((double(weatherDataJson["pop"]))*100.0);
+
+  weatherData.rain = 0;
+
+  if( weatherDataJson.hasOwnProperty("rain") ){
+    JSONVar rain = weatherDataJson["rain"];
+    if( rain.hasOwnProperty("1h") )
+      weatherData.rain = int(rain["1h"] );
+    else if( rain.hasOwnProperty("3h") )
+      weatherData.rain = int(rain["3h"] );
+  }
+  if( weatherData.rain > 0)
+    weatherData.pop = 100;
 
   weatherData.night = false;
   const char* pod_s = (const char *) weatherDataJson["sys"]["pod"];
@@ -110,13 +127,13 @@ void getForecast(boolean forceNow){
         JSONVar forecastJson = forecastList[i];
         weatherData &weatherData = forecastWeather[i];
         parseWeatherData(weatherData,forecastJson);
-        log_d("forecast %d: dt: %d, night: %d, temp %d, code %d, pressure: %d, humidity: %d, wind: %f %d %f, clouds: %d, visibility: %d", 
+        log_d("forecast %d: dt: %d, night: %d, temp %d, code %d, pressure: %d, humidity: %d, wind: %f %d %f, clouds: %d, visibility: %d, pop: %d, rain: %d, snow: %d", 
         i, 
         weatherData.dt, weatherData.night,
         weatherData.temperature, weatherData.weatherConditionCode,
         weatherData.pressure, weatherData.humidity, 
         weatherData.wind.speed, weatherData.wind.direction, weatherData.wind.gust,
-        weatherData.clouds, weatherData.visibility 
+        weatherData.clouds, weatherData.visibility, weatherData.pop, weatherData.rain, weatherData.snow
         );
       }
       //lastGetWeatherTS = now();
@@ -181,12 +198,12 @@ weatherData getWeather(boolean forceNow) {
 //      currentWeather.weatherConditionCode =
 //          int(responseObject["weather"][0]["id"]);
       parseWeatherData(currentWeather,weatherJson);
-      log_d("currenWeather: dt: %d, night: %d, temp %d, code %d, pressure: %d, humidity: %d, wind: %f %d %f, clouds: %d, visibility: %d", 
+      log_d("currenWeather: dt: %d, night: %d, temp %d, code %d, pressure: %d, humidity: %d, wind: %f %d %f, clouds: %d, visibility: %d, pop: %d, rain: %d, snow: %d", 
         currentWeather.dt, currentWeather.night,
         currentWeather.temperature, currentWeather.weatherConditionCode,
         currentWeather.pressure, currentWeather.humidity, 
         currentWeather.wind.speed, currentWeather.wind.direction, currentWeather.wind.gust,
-        currentWeather.clouds, currentWeather.visibility 
+        currentWeather.clouds, currentWeather.visibility, currentWeather.pop, currentWeather.rain, currentWeather.snow
         );
 //      strncpy(currentWeather.weatherCity, Watchy_GetLocation::currentLocation.city,
 //              sizeof(currentWeather.weatherCity));

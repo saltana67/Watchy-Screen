@@ -31,6 +31,9 @@ typedef struct weatherData {
   WindData  wind;
   int8_t  clouds;
   int16_t visibility;
+  int8_t  pop;
+  int8_t  rain;
+  int8_t  snow;
   boolean night;
 //  char weatherCity[25];
 } weatherData;

@@ -19,7 +19,7 @@ jobs:
 #          && pio platform install espressif32 --with-package=framework-arduinoespressif32 --with-package=tool-esptoolpy --with-package=toolchain-xtensa32 \
 #          && pio system prune --force
         run: |
-          apt-get install -y git
+          sudo apt-get install -y git
       - name: compile firmware
         run: |
           pio run -e debug

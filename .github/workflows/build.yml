@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Get docker image and compile face
         run: |
           docker run --rm                          \
@@ -19,7 +19,7 @@ jobs:
             /bin/bash -c                           \
             "pio run -e debug"
       - name: Upload face binary artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: Watchy-Screen-Face
           path: .pio/build/debug/firmware.bin

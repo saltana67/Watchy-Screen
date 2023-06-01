@@ -10,15 +10,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
       - name: install platformio
+#          apt-get update && apt-get install -y \
+#          git \
+#          python3-pip \
 #          && rm -rf /var/lib/apt/lists/* \
+#          && apt-get clean \
+#          && pip3 install --no-cache-dir -U platformio \
+#          && pio platform install espressif32 --with-package=framework-arduinoespressif32 --with-package=tool-esptoolpy --with-package=toolchain-xtensa32 \
+#          && pio system prune --force
         run: |
-          apt-get update && apt-get install -y \
-          git \
-          python3-pip \
-          && apt-get clean \
-          && pip3 install --no-cache-dir -U platformio \
-          && pio platform install espressif32 --with-package=framework-arduinoespressif32 --with-package=tool-esptoolpy --with-package=toolchain-xtensa32 \
-          && pio system prune --force
+          apt-get install -y git
       - name: compile firmware
         run: |
           pio run -e debug

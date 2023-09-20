@@ -1,6 +1,6 @@
 #include "SyncTime.h"
 
-#include <sntp.h>
+#include <esp_sntp.h>
 
 #include "GetLocation.h"
 #include "Watchy.h"

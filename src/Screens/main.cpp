@@ -26,6 +26,7 @@
 #include "WatchyErrors.h"
 #include "WeatherScreen.h"
 #include "WeatherForecastScreen.h"
+#include "MoonScreen.h"
 #include "WrappedTextScreen.h"
 #include "icons.h"
 
@@ -80,6 +81,7 @@ TimezoneScreen timezoneScreen;
 
 WeatherScreen weatherScreen;
 WeatherForecastScreen weatherForecastScreen;
+MoonScreen moonScreen;
 IconScreen battery(&rle_battery, "battery", OptimaLTStd22pt7b);
 IconScreen steps(&rle_steps, "steps", OptimaLTStd22pt7b);
 IconScreen orientation(&rle_orientation, "orientation", OptimaLTStd22pt7b);
@@ -89,6 +91,7 @@ IconScreen settings(&rle_settings, "settings", OptimaLTStd22pt7b);
 IconScreen text(&rle_text, "wrap text", OptimaLTStd22pt7b);
 ImageScreen weather(cloud, 96, 96, "weather", OptimaLTStd22pt7b);
 ImageScreen weatherForecast(cloud, 96, 96, "forecast", OptimaLTStd22pt7b);
+ImageScreen moon(cloud, 96, 96, "moon", OptimaLTStd22pt7b);
 
 ShowBatteryScreen showBattery;
 ShowBluetoothScreen showBluetooth;
@@ -117,6 +120,7 @@ CarouselItem carouselItems[] = {
                                 {&timeScreen, nullptr},
                                 {&weather, &weatherScreen},
                                 {&weatherForecast, &weatherForecastScreen},
+                                {&moon, &moonScreen},
                                 {&battery, &showBattery},
                                 {&steps, &showSteps},
                                 {&orientation, &showOrientation},

@@ -1,5 +1,7 @@
 # Watchy-Screen
 
+**This is my (saltana67) fork of Watchy-Screen by Charles Heynes. Original README follows.**
+
 [![Build repo](https://github.com/charles-haynes/Watchy-Screen/actions/workflows/build.yml/badge.svg)](https://github.com/charles-haynes/Watchy-Screen/actions/workflows/build.yml)
 
 Screen based implementation of the [Watchy](https://github.com/sqfmi/Watchy) library. It assumes some familiarity with the Watchy library and only documents the differences.

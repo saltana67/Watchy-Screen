@@ -1,0 +1,45 @@
+name: workflow test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+#          apt-get update && apt-get install -y \
+#          git \
+#          python3-pip \
+#          && apt-get clean \
+#          && rm -rf /var/lib/apt/lists/* \
+#          && pip3 install --no-cache-dir -U platformio \
+#          && pio platform install espressif32 --with-package=framework-arduinoespressif32 --with-package=tool-esptoolpy --with-package=toolchain-xtensa32 \
+#          && pio system prune --force
+      - name: install git and pip3
+        run: |
+          sudo apt-get install -y \
+          git \
+          python3-pip \
+          && sudo apt-get clean \
+          && sudo rm -rf /var/lib/apt/lists/*
+      - name: install platformio
+        run: |
+          pip3 install --no-cache-dir -U platformio \
+          && pio platform install espressif32 --with-package=framework-arduinoespressif32 --with-package=tool-esptoolpy --with-package=toolchain-xtensa32 \
+          && pio system prune --force
+      - name: compile firmware
+        run: |
+          pio run -e debug
+      - name: Upload face binary artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: Watchy-Screen-Face
+          path: .pio/build/debug/firmware.bin
+      - name: create release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: ".pio/build/debug/firmware.bin"
+          prerelease: true
+          omitBody: true

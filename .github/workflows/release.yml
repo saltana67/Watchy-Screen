@@ -1,4 +1,4 @@
-name: workflow test
+name: build and release
 
 on:
   workflow_dispatch:
@@ -35,7 +35,7 @@ jobs:
       - name: Upload face binary artifact
         uses: actions/upload-artifact@v3
         with:
-          name: Watchy-Screen-Face
+          name: Watchy-Screen-AZ
           path: .pio/build/debug/firmware.bin
       - name: create release
         uses: ncipollo/release-action@v1

@@ -495,6 +495,9 @@ void releaseWiFi() {
   xSemaphoreGive(wifiMutex);
 }
 
+void resetWiFi() {
+  wifiReset = false;
+}
 
 
 }  // namespace Watchy

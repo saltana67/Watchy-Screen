@@ -45,6 +45,9 @@
 #include "Maze4Watchy/Maze4Watchy.h"
 #include "QRCodeScreen.h"
 #include "TimezoneScreen.h"
+#include "WebServer.h"
+#include "WebServerScreen.h"
+
 
 TestScreen testScreen;
 
@@ -58,8 +61,10 @@ GetWeatherScreen getWeatherScreen;
 BuzzScreen buzzScreen;
 OTAScreen otaScreen;
 RestartScreen restartScreen;
+WebServerScreen webServerScreen;
 MenuItem menuItems[] = {
                         {"Reset Wifi", &resetWifiScreen},
+                        {"Web server", &webServerScreen},
                         {"Set Time", &setTimeScreen},
                       //  {"Blufi", &blufiScreen},
                         {"Update (OTA)", &otaScreen},
@@ -154,6 +159,10 @@ Watchy_Event::BackgroundTask getLocation("getLocation",
 
 Watchy_Event::BackgroundTask getWeather("getWeather", []() {
   Watchy_GetWeather::getWeather();
+},ESP_PRO_CORE);
+
+Watchy_Event::BackgroundTask webServer("webServer", []() {
+  Watchy_WebServer::startServer();
 },ESP_PRO_CORE);
 
 void setup() {

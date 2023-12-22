@@ -1,4 +1,5 @@
 //#include "BlufiScreen.h"
+#include "RestartScreen.h"
 #include "BuzzScreen.h"
 #include "CarouselScreen.h"
 #include "Events.h"
@@ -56,6 +57,7 @@ SetLocationScreen setLocationScreen;
 GetWeatherScreen getWeatherScreen;
 BuzzScreen buzzScreen;
 OTAScreen otaScreen;
+RestartScreen restartScreen;
 MenuItem menuItems[] = {
                         {"Reset Wifi", &resetWifiScreen},
                         {"Set Time", &setTimeScreen},
@@ -65,7 +67,8 @@ MenuItem menuItems[] = {
                         {"Sync Time", &syncTimeScreen},
                         {"Set Location", &setLocationScreen},
                         {"Get Weather", &getWeatherScreen},
-                        {"Buzz", &buzzScreen}
+                        {"Buzz", &buzzScreen},
+                        {"Restart", &restartScreen}
                       };
 
 MenuScreen menu(menuItems, sizeof(menuItems) / sizeof(menuItems[0]));

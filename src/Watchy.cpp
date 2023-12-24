@@ -404,6 +404,31 @@ void clearUnsuccessfulConnectionAttemptLog(){
 
 }
 
+const uint8_t maxNumberOfKnownAPs = 10;
+
+typedef struct AP {
+  const char *ssid;
+  const char *passphrase;
+} AP;
+
+AP knownAPs[maxNumberOfKnownAPs] = {
+#if defined(WIFI_SSIDs)
+  WIFI_SSIDs
+#elif defined(WIFI_SSID) && defined(WIFI_SSID)
+  {WIFI_SSID,WIFI_SSID}
+#endif
+};
+
+uint8_t numberOfKnownAPs = 
+#if defined(WIFI_SSIDs_COUNT)
+  WIFI_SSIDs_COUNT
+#elif defined(WIFI_SSID) && defined(WIFI_SSID)
+  1
+#else
+  0
+#endif
+;
+
 boolean wifiConnectionAttemptAllowed(){
   log_d("attempts: %d", unsuccessfulConnectionAttemps);
 
@@ -425,6 +450,20 @@ boolean wifiConnectionAttemptAllowed(){
     return true;
 }
 
+const char *wlStatusName(wl_status_t wlStatus) {
+switch( wlStatus ){
+  case(WL_NO_SHIELD):  return "WL_NO_SHIELD";
+  case(WL_IDLE_STATUS):  return "WL_IDLE_STATUS";
+  case(WL_NO_SSID_AVAIL):  return "WL_NO_SSID_AVAIL";
+  case(WL_SCAN_COMPLETED):  return "WL_SCAN_COMPLETED";
+  case(WL_CONNECTED):  return "WL_CONNECTED";
+  case(WL_CONNECT_FAILED):  return "WL_CONNECT_FAILED";
+  case(WL_CONNECTION_LOST):  return "WL_CONNECTION_LOST";
+  case(WL_DISCONNECTED):  return "WL_DISCONNECTED";
+  default:  return "__UNKNOWN__";
+}
+}
+
 bool connectWiFi() {
   // in theory this is re-entrant, but in practice if you call WiFi.begin()
   // while it's still trying to connect, it will return an error. Better
@@ -434,30 +473,43 @@ bool connectWiFi() {
     esp_wifi_init(&wifi_config);
     wifiReset = true;
   }
-#if !defined(WIFI_SSID) || !defined(WIFI_PASSWORD)
-  if (WL_CONNECT_FAILED == WiFi.begin()) {
-    // WiFi not setup, you can also use hard coded credentials with
-    // WiFi.begin(SSID,PASS); by defining WIFI_SSID and WIFI_PASSWORD
-#else
-  if (WL_CONNECT_FAILED == WiFi.begin() &&
-      WL_CONNECT_FAILED == WiFi.begin(WIFI_SSID, WIFI_PASSWORD)) {
-    // WiFi not setup
-#endif
-    WIFI_CONFIGURED = false;
-    logUnsuccessfulConnectionAttempt();
-  } else {
-    if (WL_CONNECTED ==
-        WiFi.waitForConnectResult()) {  // attempt to connect for 10s
+
+  const unsigned long timeoutInMiliseconds = 120000UL; //60000UL;
+
+  wl_status_t wlStatus = WiFi.begin();
+  if (wlStatus != WL_CONNECT_FAILED){
+    log_d("WiFi.begin() returns: %s", wlStatusName(wlStatus));
+    wlStatus = (wl_status_t) WiFi.waitForConnectResult(timeoutInMiliseconds);
+    log_d("WiFi.waitForConnectResult() returns: %s", wlStatusName(wlStatus));
+  }
+
+  if( wlStatus != WL_CONNECTED ) {  
+    //log_d("WiFi.eraseAP(): %s", WiFi.eraseAP() ? "true" : "false");
+    //WiFi.mode(WIFI_OFF);
+    for( int i = 0; (wlStatus != WL_CONNECTED) && (i < numberOfKnownAPs); i++ ){
+      log_d("WiFi.begin(knownAPs[%d: %s]) ... ", i, knownAPs[i].ssid);
+      wlStatus = WiFi.begin(knownAPs[i].ssid, knownAPs[i].passphrase);
+      log_d("WiFi.begin(knownAPs[%d: %s]) returns %s ", i, knownAPs[i].ssid, wlStatusName(wlStatus));
+      if( wlStatus == WL_CONNECT_FAILED ) {
+        log_d("WiFi.begin(knownAPs[%d: %s]) failed", i, knownAPs[i].ssid);
+        continue;
+      }
+      log_d("WiFi.waitForConnectResult(knownAPs[%d: %s]) ... ", i, knownAPs[i].ssid);
+      wlStatus = (wl_status_t) WiFi.waitForConnectResult(timeoutInMiliseconds);
+      log_d("WiFi.waitForConnectResult(knownAPs[%d: %s]) returns %s ", i, knownAPs[i].ssid, wlStatusName(wlStatus));
+    }
+  }
+
+  if (WL_CONNECTED == wlStatus) {  // attempt to connect for 10s
       checkWifiConfig();
       WIFI_CONFIGURED = true;
       clearUnsuccessfulConnectionAttemptLog();
-    } else {  // connection failed, time out
+  } else {  // connection failed, time out
       WIFI_CONFIGURED = false;
       logUnsuccessfulConnectionAttempt();
       // turn off radios
       WiFi.mode(WIFI_OFF);
       btStop();
-    }
   }
   return WIFI_CONFIGURED;
 }
@@ -497,6 +549,8 @@ void releaseWiFi() {
 
 void resetWiFi() {
   wifiReset = false;
+  clearUnsuccessfulConnectionAttemptLog();
+  log_d("WiFi.eraseAP(): %s", WiFi.eraseAP() ? "true" : "false");
 }
 
 

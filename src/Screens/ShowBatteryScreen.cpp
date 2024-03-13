@@ -39,7 +39,15 @@ void OnWake(esp_sleep_wakeup_cause_t wakeup_reason) {
   if ((lastReadingTS != 0) && (now() < lastReadingTS + updateInterval)) {
     return;  // hasn't been an updateInterval yet
   }
+  int fix=0;
   do {
+    if( fix++ > fastBatteryReadingssz) {
+      log_e("catch up catch ;( breaking loop.");
+      lastReadingTS = now();
+      break;
+    }else{
+      log_d("catching up loop %d", fix);
+    }
     batteryReadings[nextReading] = Watchy::getBatteryVoltage();
     nextReading = (nextReading + 1) % batteryReadingssz;
     if (lastReadingTS == 0) {
@@ -50,6 +58,7 @@ void OnWake(esp_sleep_wakeup_cause_t wakeup_reason) {
       lastReadingTS += updateInterval;
     }
     // catch up in case we slept for a very long time
+    log_d("now() >= lastReadingTS + updateInterval: %s", ((now() >= lastReadingTS + updateInterval) ? "true":"false") );
   } while (now() >= lastReadingTS + updateInterval);
 }
 

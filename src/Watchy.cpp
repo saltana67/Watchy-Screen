@@ -414,15 +414,15 @@ typedef struct AP {
 AP knownAPs[maxNumberOfKnownAPs] = {
 #if defined(WIFI_SSIDs)
   WIFI_SSIDs
-#elif defined(WIFI_SSID) && defined(WIFI_SSID)
-  {WIFI_SSID,WIFI_SSID}
+#elif defined(WIFI_SSID) && defined(WIFI_PASSWORD)
+  {WIFI_SSID,WIFI_PASSWORD}
 #endif
 };
 
 uint8_t numberOfKnownAPs = 
 #if defined(WIFI_SSIDs_COUNT)
   WIFI_SSIDs_COUNT
-#elif defined(WIFI_SSID) && defined(WIFI_SSID)
+#elif defined(WIFI_SSID) && defined(WIFI_PASSWORD)
   1
 #else
   0
@@ -479,6 +479,7 @@ bool connectWiFi() {
   wl_status_t wlStatus = WiFi.begin();
   if (wlStatus != WL_CONNECT_FAILED){
     log_d("WiFi.begin() returns: %s", wlStatusName(wlStatus));
+    log_d("WiFi.waitForConnectResult(%lu)", timeoutInMiliseconds);
     wlStatus = (wl_status_t) WiFi.waitForConnectResult(timeoutInMiliseconds);
     log_d("WiFi.waitForConnectResult() returns: %s", wlStatusName(wlStatus));
   }
@@ -487,6 +488,7 @@ bool connectWiFi() {
     //log_d("WiFi.eraseAP(): %s", WiFi.eraseAP() ? "true" : "false");
     //WiFi.mode(WIFI_OFF);
     for( int i = 0; (wlStatus != WL_CONNECTED) && (i < numberOfKnownAPs); i++ ){
+      //log_d("WiFi.begin(knownAPs[%d: %s : %s]) ... ", i, knownAPs[i].ssid, knownAPs[i].passphrase);
       log_d("WiFi.begin(knownAPs[%d: %s]) ... ", i, knownAPs[i].ssid);
       wlStatus = WiFi.begin(knownAPs[i].ssid, knownAPs[i].passphrase);
       log_d("WiFi.begin(knownAPs[%d: %s]) returns %s ", i, knownAPs[i].ssid, wlStatusName(wlStatus));

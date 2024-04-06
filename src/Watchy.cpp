@@ -9,6 +9,8 @@
 #include "WatchyErrors.h"
 #include "esp_wifi.h"
 #include "GetWeather.h"
+#include <WiFiMulti.h>
+
 
 namespace Watchy {
 
@@ -27,6 +29,8 @@ RTC_DATA_ATTR Screen *screen = nullptr;
 RTC_DATA_ATTR BMA423 sensor;
 RTC_DATA_ATTR bool WIFI_CONFIGURED;
 RTC_DATA_ATTR bool BLE_CONFIGURED;
+
+WiFiMulti wifiMulti;
 
 void handleButtonPress() {
   uint64_t wakeupBit = esp_sleep_get_ext1_wakeup_status();
@@ -189,6 +193,7 @@ void initTimeOld(String datetime) {
   done = true;
 }
 
+void initMultiWifi(void);
 
 void init() {
   start = micros();
@@ -202,6 +207,8 @@ void init() {
                       (wakeup_reason <= ESP_SLEEP_WAKEUP_UNDEFINED)
                     ||(wakeup_reason > ESP_SLEEP_WAKEUP_UART)
   );
+
+  initMultiWifi();
 
   initTime( reinit );
 
@@ -429,6 +436,13 @@ uint8_t numberOfKnownAPs =
 #endif
 ;
 
+void initMultiWifi(){
+  for( int i=0; i < numberOfKnownAPs; i++ ){
+    log_d("wifiMulti.addAP(\"%s\",\"#PWD#\")", knownAPs[i].ssid);
+    wifiMulti.addAP(knownAPs[i].ssid, knownAPs[i].passphrase);
+  }
+}
+
 boolean wifiConnectionAttemptAllowed(){
   log_d("attempts: %d", unsuccessfulConnectionAttemps);
 
@@ -465,6 +479,101 @@ switch( wlStatus ){
 }
 
 bool connectWiFi() {
+
+    bool tryBegin = true;
+    bool tryReconnectAfterBegin = true;
+    uint32_t delayBeforeReconnect = 500;
+
+    log_i("free heap: %d",ESP.getFreeHeap());
+    log_i("uxTaskGetStackHighWaterMark(NULL): %d", uxTaskGetStackHighWaterMark(NULL));
+
+    wifiReset = true; //probably not needed, TODO: rethink wifi reset, or at least document the ideas behind
+    wl_status_t wifiStatus = WiFi.status();
+    log_d("WiFi status: %s", wlStatusName(wifiStatus));
+
+    
+    if( (wifiStatus != WL_CONNECTED) && tryBegin ) {
+
+        log_d("calling WiFi.begin() to use last known AP fast ...");
+        wifiStatus = WiFi.begin();
+        log_d("WiFi.begin() returns: %s", wlStatusName(wifiStatus));
+        
+        const unsigned long timeoutInMiliseconds = 15000UL; //120000UL; //60000UL;
+        log_d("WiFi.waitForConnectResult(%lu)", timeoutInMiliseconds);
+        wifiStatus = (wl_status_t) WiFi.waitForConnectResult(timeoutInMiliseconds);
+        log_d("WiFi.waitForConnectResult() returns: %s", wlStatusName(wifiStatus));
+
+
+        if( tryReconnectAfterBegin && (wifiStatus == WL_DISCONNECTED) ) {
+            
+            if( delayBeforeReconnect > 0 ) {
+              log_d("wifiStatus == WL_DISCONNECTED, delay before reconnect ... ");
+              const uint32_t delaySteps = 10;
+              const uint32_t minDelay = 10; 
+              uint32_t nextDelay = delayBeforeReconnect / delaySteps;
+              if( nextDelay < minDelay )
+                nextDelay = minDelay;
+              int32_t delayRest = delayBeforeReconnect;
+              
+              for( int i = 0; (i < delaySteps) && (delayRest > 0) && (wifiStatus != WL_CONNECTED); i++ ) {
+                  log_d("delayBeforeReconnect step: %i/%i, delayRest: %i, nextDelay: %i, wifiStatus: %s", i, delaySteps, delayRest, nextDelay,  wlStatusName(wifiStatus));
+                  delay(nextDelay);
+                  wifiStatus = WiFi.status();
+                  delayRest = delayRest - nextDelay;
+              }
+            }
+
+            if( wifiStatus == WL_DISCONNECTED ) {
+                log_d("wifiStatus == WL_DISCONNECTED, trying connect");
+                if( esp_wifi_connect() != ESP_OK )
+                    log_d("esp_wifi_connect failed!!!");
+            }
+        }
+
+        wifiStatus = WiFi.status();
+        if( wifiStatus != WL_CONNECTED ){
+            log_d("wifiStatus != WL_CONNECTED, turning wifi off");
+            WiFi.mode(WIFI_OFF);
+            delay(20);
+        }
+    }
+
+    wifiStatus = WiFi.status();
+    log_d("WiFi status: %s", wlStatusName(wifiStatus));
+
+    if( wifiStatus != WL_CONNECTED ){
+        log_d("wifiStatus != WL_CONNECTED, starting wifiMulti.run() .. ");
+        uint8_t wifiMultiStatus = wifiMulti.run();
+        log_d("wifiMulti status: %s", wlStatusName((wl_status_t)wifiMultiStatus));
+        if( wifiMultiStatus != WL_CONNECTED ) {
+            log_d("wifiMultiStatus != WL_CONNECTED, waiting after mutli .. ");
+            const unsigned long timeoutInMiliseconds = 120000UL; //60000UL;
+            log_d("WiFi.waitForConnectResult(%lu)", timeoutInMiliseconds);
+            wifiStatus = (wl_status_t) WiFi.waitForConnectResult(timeoutInMiliseconds);
+            log_d("WiFi.waitForConnectResult() returns: %s", wlStatusName(wifiStatus));
+        }
+    }
+
+    wifiStatus = WiFi.status();
+    if (WL_CONNECTED == wifiStatus) {
+        checkWifiConfig();
+        WIFI_CONFIGURED = true;
+        clearUnsuccessfulConnectionAttemptLog();
+    } else {  // connection failed, time out
+        WIFI_CONFIGURED = false;
+        logUnsuccessfulConnectionAttempt();
+        // turn off radios
+        WiFi.mode(WIFI_OFF);
+        //btStop(); //probably wrong place to turn off bluetooth ... TODO: rethink wifi/bluetooth activation scheme 
+    }
+
+    log_i("free heap: %d",ESP.getFreeHeap());
+    log_i("uxTaskGetStackHighWaterMark(NULL): %d", uxTaskGetStackHighWaterMark(NULL));
+
+    return WIFI_CONFIGURED;
+}
+
+bool connectWiFiOld() {
   // in theory this is re-entrant, but in practice if you call WiFi.begin()
   // while it's still trying to connect, it will return an error. Better
   // to serialize WiFi.begin()
@@ -472,6 +581,28 @@ bool connectWiFi() {
     wifi_init_config_t wifi_config = WIFI_INIT_CONFIG_DEFAULT();
     esp_wifi_init(&wifi_config);
     wifiReset = true;
+  }
+
+  wifi_mode_t mode;
+  esp_err_t wifiError;
+
+  wifiError = esp_wifi_get_mode(&mode);
+
+  if( wifiError != ESP_OK ){
+      if(wifiError == ESP_ERR_WIFI_NOT_INIT){
+        log_e("esp_wifi_get_mode: ESP_ERR_WIFI_NOT_INIT");
+        log_e("reinitializing wifi");
+        wifi_init_config_t wifi_config = WIFI_INIT_CONFIG_DEFAULT();
+        esp_wifi_init(&wifi_config);
+        wifiError = esp_wifi_get_mode(&mode);
+        if( wifiError == ESP_OK ){
+          if(wifiError == ESP_ERR_WIFI_NOT_INIT){
+            log_e("reinitializing wifi failed !!!");
+          }else{
+            wifiReset = true;
+          }
+        }
+      }
   }
 
   const unsigned long timeoutInMiliseconds = 120000UL; //60000UL;

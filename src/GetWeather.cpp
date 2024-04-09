@@ -7,6 +7,9 @@
 #include "WatchyErrors.h"
 #include "config.h"  // should be first
 
+#include "WeatherForecastHandler.h"
+#include <ArduinoStreamParser.h>
+
 namespace Watchy_GetWeather {
 RTC_DATA_ATTR weatherData currentWeather = {
                                               .temperature = 22
@@ -63,7 +66,57 @@ boolean parseWeatherData( weatherData &weatherData, JSONVar &weatherDataJson ){
   return true;
 }
 
-boolean parseForecastResponse(HTTPClient& http) {
+
+void weatherForecastCopy(weatherData &tgt, const weatherData &src){
+        tgt.dt = src.dt
+    ,   tgt.night = src.night
+    ,   tgt.temperature = src.temperature
+    ,   tgt.weatherConditionCode = src.weatherConditionCode
+    ,   tgt.pressure = src.pressure
+    ,   tgt.humidity = src.humidity
+    ,   tgt.wind.speed = src.wind.speed
+    ,   tgt.wind.direction = src.wind.direction
+    ,   tgt.wind.gust = src.wind.gust
+    ,   tgt.clouds = src.clouds
+    ,   tgt.visibility = src.visibility
+    ,   tgt.pop = src.pop
+    ,   tgt.rain = src.rain
+    ,   tgt.snow = src.snow
+    ;
+}
+
+boolean _p_start = true;
+boolean parseForecastResponse(HTTPClient& http){
+    ArudinoStreamParser parser;                   // <---------- Declare stream parser
+    WeatherForecastHandler custom_handler;        // <---------- Declare stream handler
+    _p_start = true;
+    
+    custom_handler.setOnWeatherDataParsed([](weatherData &weather) { 
+          if( _p_start ){
+            nr_forecasts = 0;
+            _p_start = false;
+          }
+          if( nr_forecasts >= MAX_FORECASTS ){
+              log_w("nr_forecasts (%i) >= MAX_FORECASTS (%i), ignoring ... ", nr_forecasts, MAX_FORECASTS);
+              return;
+          }
+          //log_weatherForecast(weather);
+
+        // weatherData tgt = forecastWeather[tmpForecasts];
+          weatherForecastCopy(forecastWeather[nr_forecasts],weather);
+          
+          //weatherData w = forecastWeather[tmpForecasts];
+          //log_weatherForecast(forecastWeather[tmpForecasts]);
+          nr_forecasts++;
+      });
+    parser.setHandler(&custom_handler); // <--------- Link to customer listener (parser to be honest)
+
+    http.writeToStream(&parser); // <--------- Shoot the characters straight to the parser
+
+    return true;
+}
+
+boolean parseForecastResponseOld(HTTPClient& http) {
       String payload = http.getString();
       log_i("response payload: %s", payload.c_str());
       JSONVar responseObject = JSON.parse(payload);

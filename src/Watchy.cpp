@@ -29,6 +29,7 @@ RTC_DATA_ATTR Screen *screen = nullptr;
 RTC_DATA_ATTR BMA423 sensor;
 RTC_DATA_ATTR bool WIFI_CONFIGURED;
 RTC_DATA_ATTR bool BLE_CONFIGURED;
+RTC_DATA_ATTR bool AIRPLANE_MODE = false;
 
 WiFiMulti wifiMulti;
 
@@ -652,6 +653,11 @@ unsigned int wifiConnectionCount = 0;
 bool getWiFi() {
   checkWifiConfig();
   xSemaphoreTake(wifiMutex, portMAX_DELAY);
+  if( AIRPLANE_MODE ){
+    log_d("AIRPLANE_MODE: %s", AIRPLANE_MODE ? "true" :"false");
+    xSemaphoreGive(wifiMutex);
+    return false;
+  }
   if( ! Watchy::wifiConnectionAttemptAllowed() ){
     log_d("wifiConnectionAttemptAllowed: false");
     xSemaphoreGive(wifiMutex);

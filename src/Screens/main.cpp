@@ -47,6 +47,7 @@
 #include "TimezoneScreen.h"
 #include "WebServer.h"
 #include "WebServerScreen.h"
+#include "AirplaneModeScreen.h"
 
 
 TestScreen testScreen;
@@ -62,7 +63,9 @@ BuzzScreen buzzScreen;
 OTAScreen otaScreen;
 RestartScreen restartScreen;
 WebServerScreen webServerScreen;
+AirplaneModeScreen airplaneModeScreen;
 MenuItem menuItems[] = {
+                        {"Airplane mode", &airplaneModeScreen},
                         {"Reset Wifi", &resetWifiScreen},
                         {"Web server", &webServerScreen},
                         {"Set Time", &setTimeScreen},

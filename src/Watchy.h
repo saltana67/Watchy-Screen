@@ -46,4 +46,5 @@ void setScreen(Screen *s);
 extern BMA423 sensor;
 extern bool WIFI_CONFIGURED;
 extern bool BLE_CONFIGURED;
+extern bool AIRPLANE_MODE;
 };  // namespace Watchy

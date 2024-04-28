@@ -38,9 +38,17 @@ void SevenSegScreen::show() {
     drawSteps();
     drawWeather();
     drawBattery();
-    display.drawBitmap(120, 77, WIFI_CONFIGURED ? wifi : wifioff, 26, 18, DARKMODE ? GxEPD_WHITE : GxEPD_BLACK);
-    if(BLE_CONFIGURED){
-        display.drawBitmap(100, 75, bluetooth13x21, 13, 21, DARKMODE ? GxEPD_WHITE : GxEPD_BLACK);
+    if( Watchy::AIRPLANE_MODE ) {
+        //place for ble and wifi icons starts at 100 and reaches to 120+18=138 
+        //width is 38
+        //middle point is 100+(38/2)=119
+        //start for airplane mode on is at 119-(21/2)=109
+        display.drawBitmap(109, 75, airplane_mode_on21x21, 21, 21, DARKMODE ? GxEPD_WHITE : GxEPD_BLACK );
+    }else{
+        display.drawBitmap(120, 77, WIFI_CONFIGURED ? wifi : wifioff, 26, 18, DARKMODE ? GxEPD_WHITE : GxEPD_BLACK);
+        if(BLE_CONFIGURED){
+            display.drawBitmap(100, 75, bluetooth13x21, 13, 21, DARKMODE ? GxEPD_WHITE : GxEPD_BLACK);
+        }
     }
 }
 

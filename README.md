@@ -2,7 +2,12 @@
 
 **This is my (saltana67) fork of Watchy-Screen by Charles Heynes. Original README follows.**
 
-[Lopaka: Graphics editor and image converter for Arduino, ESP32, AdafruitGFX, u8g2, FlipperZero](https://lopaka.app/)
+ ## useful links
+
+- [Lopaka: Graphics editor and image converter for Arduino, ESP32, AdafruitGFX, u8g2, FlipperZero](https://lopaka.app/)
+- [Adafruit GFX Font Customiser](https://tchapi.github.io/Adafruit-GFX-Font-Customiser/)
+
+------------------
 
 [![Build repo](https://github.com/charles-haynes/Watchy-Screen/actions/workflows/build.yml/badge.svg)](https://github.com/charles-haynes/Watchy-Screen/actions/workflows/build.yml)
 

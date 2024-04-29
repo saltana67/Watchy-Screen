@@ -10,4 +10,6 @@ class AirplaneModeScreen : public Screen {
   void back() override;
   void up() override;
   void down() override;
+ protected:
+  void drawVerticalButtonsBar(boolean state);
 };

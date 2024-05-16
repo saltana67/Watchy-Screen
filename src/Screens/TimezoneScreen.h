@@ -12,5 +12,7 @@ class TimezoneScreen : public Screen {
  private:
 	void drawImage(const unsigned char world_map []);
     void printLocationTimezone(const Watchy_GetLocation::location *loc);
+    void drawLocation(const Watchy_GetLocation::location *loc);
+    void drawLocation(const float lat, const float lon);
 };
 

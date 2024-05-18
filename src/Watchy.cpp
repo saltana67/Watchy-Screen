@@ -22,8 +22,10 @@ uint16_t _writeRegister(uint8_t address, uint8_t reg, uint8_t *data,
                         uint16_t len);
 
 WatchyRTC RTC;
-GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display(
-  GxEPD2_154_D67(CS, DC, RESET, BUSY));
+//GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display(
+//  GxEPD2_154_D67(CS, DC, RESET, BUSY));
+GxEPD2_BW<WatchyDisplay, WatchyDisplay::HEIGHT> display(WatchyDisplay{});
+
 RTC_DATA_ATTR Screen *screen = nullptr;
 
 RTC_DATA_ATTR BMA423 sensor;
@@ -209,9 +211,15 @@ void init() {
                     ||(wakeup_reason > ESP_SLEEP_WAKEUP_UART)
   );
 
+
+
   initMultiWifi();
 
   initTime( reinit );
+
+  display.epd2.initWatchy();
+  display.setFullWindow();
+  display.epd2.asyncPowerOn();
 
 
   for (auto &&owc : owcVec) {
@@ -269,8 +277,10 @@ void deepSleep() {
 
 void showWatchFace(bool partialRefresh, Screen *s) {
   uint64_t start = micros();
-  display.init(0, false);  //_initial_refresh to false to prevent full update on init
-  display.setFullWindow();
+  //display.init(0, false);  //_initial_refresh to false to prevent full update on init
+  // display.epd2.initWatchy();
+  // display.setFullWindow();
+  // display.epd2.asyncPowerOn();
   display.setTextColor((s->bgColor == GxEPD_WHITE ? GxEPD_BLACK : GxEPD_WHITE));
   display.setCursor(0, 0);
   s->show();

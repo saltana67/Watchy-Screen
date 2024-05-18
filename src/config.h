@@ -24,6 +24,10 @@
 #define DC 10
 #define RESET 9
 #define BUSY 19
+#define DISPLAY_CS 5
+#define DISPLAY_RES 9
+#define DISPLAY_DC 10
+#define DISPLAY_BUSY 19
 #define VIB_MOTOR_PIN 13
 #define MENU_BTN_PIN 26
 #define BACK_BTN_PIN 25

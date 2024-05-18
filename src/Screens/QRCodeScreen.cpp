@@ -11,7 +11,8 @@ void QRCodeScreen::show(){
 }
 
 void QRCodeScreen::drawQRCode(String content){
-  QRCodeGxEPD2_BW<GxEPD2_154_D67,GxEPD2_154_D67::HEIGHT> qrcode (&display);
+//  QRCodeGxEPD2_BW<GxEPD2_154_D67,GxEPD2_154_D67::HEIGHT> qrcode (&display);
+  QRCodeGxEPD2_BW<WatchyDisplay,WatchyDisplay::HEIGHT> qrcode (&display);
   qrcode.init();
   qrcode.create(content);
 }

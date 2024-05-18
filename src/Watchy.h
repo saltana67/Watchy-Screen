@@ -1,11 +1,12 @@
 #pragma once
 
 #include <Arduino.h>
-#include <GxEPD2_BW.h>
+#include "GxEPD2_BW.h"
 #include <HTTPClient.h>
 #include <TimeLib.h>
 #include <Wire.h>
 
+#include "Display.h"
 #include "battery.h"
 //#include "BLE.h"
 #include "bma.h"
@@ -17,7 +18,8 @@ class Screen;
 
 namespace Watchy {
 extern WatchyRTC RTC;
-extern GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display;
+//extern GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display;
+extern GxEPD2_BW<WatchyDisplay, WatchyDisplay::HEIGHT> display;
 extern tmElements_t currentTime;
 extern Screen *screen;
 void init();

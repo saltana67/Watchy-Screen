@@ -205,7 +205,10 @@
 
 #define GxEPD_INVERT     0x8000 //invert bit "color"
 #define GxEPD_GREY       0xA103
-
+#define GxEPD_RIGHT_DIAG 0xA104
+#define GxEPD_RIGHT_DIAG_INVERS 0xA105
+#define GxEPD_2_16_MIRRORED 0xA106
+#define GxEPD_2_16_MIRRORED_INVERS 0xA107
 template<typename GxEPD2_Type, const uint16_t page_height>
 class GxEPD2_BW : public GxEPD2_GFX_BASE_CLASS
 {
@@ -293,6 +296,30 @@ class GxEPD2_BW : public GxEPD2_GFX_BASE_CLASS
           _buffer[i] = (_buffer[i] & (0xFF ^ (1 << (7 - x % 8))));
         else
           _buffer[i] = (_buffer[i] | (1 << (7 - x % 8)));
+      }else if( color == GxEPD_RIGHT_DIAG ){
+        if( ((x%3)+(y%3))==2 ) 
+          _buffer[i] = (_buffer[i] & (0xFF ^ (1 << (7 - x % 8))));
+        else
+          _buffer[i] = (_buffer[i] | (1 << (7 - x % 8)));
+      }else if( color == GxEPD_RIGHT_DIAG_INVERS ){
+        if( ((x%3)+(y%3))!=2 ) 
+          _buffer[i] = (_buffer[i] & (0xFF ^ (1 << (7 - x % 8))));
+        else
+          _buffer[i] = (_buffer[i] | (1 << (7 - x % 8)));
+      }else if( color == GxEPD_2_16_MIRRORED ){
+        if(    (((y%4)==0) && ((x%8)==0 || (x%8)==7))
+            || (((y%4)==2) && ((x%8)==2 || (x%8)==5))
+          ) 
+          _buffer[i] = (_buffer[i] & (0xFF ^ (1 << (7 - x % 8))));
+        else
+          _buffer[i] = (_buffer[i] | (1 << (7 - x % 8)));
+      }else if( color == GxEPD_2_16_MIRRORED_INVERS ){
+        if(    (((y%4)==0) && ((x%8)==0 || (x%8)==7))
+            || (((y%4)==2) && ((x%8)==2 || (x%8)==5))
+          ) 
+          _buffer[i] = (_buffer[i] | (1 << (7 - x % 8)));
+        else
+          _buffer[i] = (_buffer[i] & (0xFF ^ (1 << (7 - x % 8))));
       }else if (color)
         _buffer[i] = (_buffer[i] | (1 << (7 - x % 8)));
       else
@@ -301,14 +328,16 @@ class GxEPD2_BW : public GxEPD2_GFX_BASE_CLASS
 
     /**************************************************************************/
     /*!
-      @brief      Draw a PROGMEM-resident 1-bit image at the specified (x,y)
-      position, using the specified foreground (for set bits) and background (unset
+      @brief      Draw a vertical cut/part of PROGMEM-resident 1-bit image at the specified (x,y)
+      position, staring at x1 and of w1 width, using the specified foreground (for set bits) and background (unset
       bits) colors.
         @param    x   Top left corner x coordinate
         @param    y   Top left corner y coordinate
         @param    bitmap  byte array with monochrome bitmap
         @param    w   Width of bitmap in pixels
         @param    h   Height of bitmap in pixels
+        @param    x1  left x coordinate to start of part within bitmap
+        @param    w1  Width of bitmap part in pixels
         @param    color 16-bit 5-6-5 Color to draw pixels with
         @param    bg 16-bit 5-6-5 Color to draw background with
     */

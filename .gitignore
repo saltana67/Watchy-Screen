@@ -1,6 +1,6 @@
 # don't check in credentials
 data/
-
+unpacked_fs/
 src/secrets.h
 secrets.h
 wifi_config.h

@@ -30,7 +30,7 @@ mcu = board.get("build.mcu", "esp32")
 class FSType(Enum):
     LITTLEFS="littlefs"
     FATFS="fatfs"
-#    SPITFFS="spiffs"
+    SPIFFS="spiffs"
 
 class FSInfo:
     def __init__(self, fs_type, start, length, page_size, block_size):
@@ -49,15 +49,17 @@ class FS_Info(FSInfo):
     def __init__(self, start, length, page_size, block_size):
         print("env[\"MKFSTOOL\"]: " + env["MKFSTOOL"])
         mkfsToolPathPattern = env["MKFSTOOL"]
+        print("env.subst(\"$MKFSTOOL\"): " + env.subst("$MKFSTOOL"))
         #print("env[\"MKSPIFFSTOOL\"]: " + env["MKSPIFFSTOOL","none"])
         print("env[\"PIOPLATFORM\"]: " + env["PIOPLATFORM"]) 
         pioPlatform = env["PIOPLATFORM"]
         print("env[\"PIOFRAMEWORK\"][0]: " + env["PIOFRAMEWORK"][0]) 
         pioFramework = env["PIOFRAMEWORK"][0]
-        #self.tool = env["MKFSTOOL"]
-        self.tool = mkfsToolPathPattern
-        self.tool = self.tool.replace("${PIOPLATFORM}", pioPlatform)
-        self.tool = self.tool.replace("${PIOFRAMEWORK}", pioFramework)
+        self.tool = env.subst("$MKFSTOOL")
+        #self.tool = mkfsToolPathPattern
+        #self.tool = self.tool.replace("${PIOPLATFORM}", pioPlatform)
+        #self.tool = self.tool.replace("${PIOFRAMEWORK}", pioFramework)
+        
         if mkfsToolPathPattern.startswith("mkspiffs"):
             self.tool = join(platform.get_package_dir("tool-mkspiffs"), self.tool)
         else:
@@ -146,13 +148,107 @@ def esp8266_fetch_fs_size(env):
 
         env[k] = _value
 
+APP_TYPE = 0x00
+DATA_TYPE = 0x01
+
+TYPES = {
+    'app': APP_TYPE,
+    'data': DATA_TYPE,
+}
+
+def get_ptype_name(ptype):
+    for name, value in TYPES.items():
+        if value == ptype:
+            return name
+    raise KeyError("partition type value not found: " + hex(ptype))
+
+def get_ptype_as_int(ptype):
+    """ Convert a string which might be numeric or the name of a partition type to an integer """
+    try:
+        return TYPES[ptype]
+    except KeyError:
+        try:
+            return int(ptype, 0)
+        except TypeError:
+            return ptype
+
+
+# Keep this map in sync with esp_partition_subtype_t enum in esp_partition.h
+MIN_PARTITION_SUBTYPE_APP_OTA = 0x10
+NUM_PARTITION_SUBTYPE_APP_OTA = 16
+
+SUBTYPE_OTA         = 0x00
+SUBTYPE_NVS         = 0x02
+SUBTYPE_FAT         = 0x81
+SUBTYPE_SPIFFS      = 0x82
+SUBTYPE_LITTLEFS    = 0x83
+
+SUBTYPES = {
+    APP_TYPE: {
+        'factory': 0x00,
+        'test': 0x20,
+    },
+    DATA_TYPE: {
+        'ota': SUBTYPE_OTA,
+        'phy': 0x01,
+        'nvs': SUBTYPE_NVS,
+        'coredump': 0x03,
+        'nvs_keys': 0x04,
+        'efuse': 0x05,
+        'undefined': 0x06,
+        'esphttpd': 0x80,
+        'fat': SUBTYPE_FAT,
+        'spiffs': SUBTYPE_SPIFFS,
+        'littlefs': SUBTYPE_LITTLEFS,
+    },
+}
+
+# add subtypes for the 16 OTA slot values ("ota_XX, etc.")
+for ota_slot in range(NUM_PARTITION_SUBTYPE_APP_OTA):
+    #print("adding partition type: ", "ota_%d" % ota_slot, "value: ", MIN_PARTITION_SUBTYPE_APP_OTA + ota_slot)
+    SUBTYPES[TYPES["app"]]["ota_%d" % ota_slot] = MIN_PARTITION_SUBTYPE_APP_OTA + ota_slot
+
+def get_subtype_as_int(ptype, subtype):
+    """ Convert a string which might be numeric or the name of a partition subtype to an integer """
+    try:
+        return SUBTYPES[get_ptype_as_int(ptype)][subtype]
+    except KeyError:
+        try:
+            return int(subtype, 0)
+        except TypeError:
+            return subtype
+
+def get_ptype_names(ptype,subtype):
+    typeName = get_ptype_name(ptype)
+    for subtypeName, value in SUBTYPES[ptype].items():
+        if value == subtype:
+            return typeName, subtypeName
+    raise KeyError("subpartition type value not found for type \"" + typeName + "\": " + hex(subtype))
+
+def get_pstype_name(ptype,subtype):
+    typeName = get_ptype_name(ptype)
+    for subtypeName, value in SUBTYPES[ptype].items():
+        if value == subtype:
+            return subtypeName
+    raise KeyError("subpartition type value not found for type \"" + typeName + "\": " + hex(subtype))
+
 ## Script interface functions
-def parse_partition_table(content):
+def parse_partition_table(content, subtypes=[SUBTYPE_SPIFFS,SUBTYPE_LITTLEFS]):
     entries = [e for e in content.split(b'\xaaP') if len(e) > 0]
-    #print("Partition data:")
+    print("Partition data:")
+    print("type:\t","\tsubtype:\t","\taddress:\t","\tsize:\t")
     for entry in entries:
-        type = entry[1]
-        if type in [0x82,0x83]: # SPIFFS or LITTLEFS
+        type = entry[0]
+        subtype = entry[1]
+        typeName,subtypeName = get_ptype_names(type,subtype)
+        offset = int.from_bytes(entry[2:5], byteorder='little', signed=False)
+        size = int.from_bytes(entry[6:9], byteorder='little', signed=False)
+        #print("type:\t",typeName," (",hex(type),")\tsubtype:\t",subtypeName," (",hex(subtype),")\taddress:\t",hex(offset), "\tsize:\t",hex(size) )
+        print(typeName," (",hex(type),")\t",subtypeName," (",hex(subtype),")\t",hex(offset), "\t",hex(size) )
+        # print("type:",hex(type))
+        # print("address:",hex(p_offset))
+        # print("size:",hex(p_size))
+        if subtype in subtypes: # SPIFFS or LITTLEFS
             offset = int.from_bytes(entry[2:5], byteorder='little', signed=False)
             size = int.from_bytes(entry[6:9], byteorder='little', signed=False)
             #print("type:",hex(type))
@@ -163,7 +259,7 @@ def parse_partition_table(content):
             env["FS_PAGE"] = int("0x100", 16)
             env["FS_BLOCK"] = int("0x1000", 16)
 
-def get_partition_table():
+def get_partition_table(subtypes=[SUBTYPE_SPIFFS,SUBTYPE_LITTLEFS]):
     esptoolpy = join(platform.get_package_dir("tool-esptoolpy") or "", "esptool.py")
     upload_port = join(env.get("UPLOAD_PORT", "none"))
     download_speed = join(str(board.get("download.speed", "115200")))
@@ -189,14 +285,14 @@ def get_partition_table():
         print("Downloading failed with " + str(exc))
     with open(fs_file, mode="rb") as file:
         content = file.read()
-        parse_partition_table(content)
+        parse_partition_table(content,subtypes)
 
-def get_fs_type_start_and_length():
+def get_fs_type_start_and_length(subtypes=[SUBTYPE_SPIFFS,SUBTYPE_LITTLEFS]):
     platform = env["PIOPLATFORM"]
     print("env[\"PIOPLATFORM\"]: " + platform)
     if platform == "espressif32":
         print(f"Retrieving filesystem info for {mcu}.")
-        get_partition_table()
+        get_partition_table(subtypes)
         return FS_Info(env["FS_START"], env["FS_SIZE"], env["FS_PAGE"], env["FS_BLOCK"])
     elif platform == "espressif8266":
         print("Retrieving filesystem info for ESP8266.")
@@ -239,6 +335,7 @@ def download_fs(fs_info: FSInfo):
     ]
     esptoolpy_cmd = [env["PYTHONEXE"], esptoolpy] + esptoolpy_flags
     print("Download filesystem image")
+    print("command: ", esptoolpy_cmd)
     try:
         returncode = subprocess.call(esptoolpy_cmd, shell=False)
         return (True, fs_file)
@@ -286,7 +383,6 @@ def command_download_fs(*args, **kwargs):
     if unpack_ok is True:
         display_fs(unpacked_dir)
 
-
 env.AddCustomTarget(
     name="downloadfs",
     dependencies=None,
@@ -296,3 +392,101 @@ env.AddCustomTarget(
     title="Download Filesystem",
     description="Downloads and displays files stored in the target ESP32/ESP8266"
 )
+
+def unpack_nvs(downloaded_file):
+    # by writing custom_nvs_unpack_dir = some_dir in the platformio.ini, one can
+    # control the unpack directory
+    unpack_dir = env.GetProjectOption("custom_nvs_unpack_dir", "unpacked_nvs")
+    # file name (prefix) for upacked nvs content
+    unpack_filename = env.GetProjectOption("custom_nvs_unpack_file", "nvs")
+    
+    if not os.path.exists(downloaded_file):
+        print(f"ERROR: {downloaded_file} with filesystem not found, maybe download failed due to download_speed setting being too high.")
+        assert(0)
+    try:
+        if os.path.exists(unpack_dir):
+            shutil.rmtree(unpack_dir)
+    except Exception as exc:
+        print("Exception while attempting to remove the folder '" + str(unpack_dir) + "': " + str(exc))
+    if not os.path.exists(unpack_dir):
+        os.makedirs(unpack_dir)
+
+    #PYTHONEXE
+    pyth_exe = env.get("PYTHONEXE","python")
+    #PROJECT_PACKAGES_DIR': '/home/adam/.platformio/packages'
+    #env.get("PROJECT_PACKAGES_DIR")
+    pacdir = env.get("PROJECT_PACKAGES_DIR","/home/adam/.platformio/packages")
+    #/framework-espidf
+    idfdir = pacdir + "/framework-espidf"
+    #"python ${IDF_PATH}/components/nvs_flash/nvs_partition_tool/nvs_tool.py"
+    nvs_tool = idfdir + "/components/nvs_flash/nvs_partition_tool/nvs_tool.py"
+    #return f'"{self.tool}" -b {self.block_size} -s {self.length} -p {self.page_size} --unpack "{output_dir}" "{input_file}"'
+    #cmd = fs_info.get_extract_cmd(downloaded_file, unpack_dir)
+    print("Unpack NVS partition from filesystem image")
+    print("downloaded_file: " + downloaded_file)
+    print("unpack_dir: " + unpack_dir)
+    for dump_format in ["text","json"]:
+        if( dump_format == "text" ):
+            unpack_file = join(unpack_dir,unpack_filename+".txt")
+        else:
+            unpack_file = join(unpack_dir,unpack_filename+"."+dump_format)
+        cmd = f'"{pyth_exe}" "{nvs_tool}" --dump minimal --format {dump_format} "{downloaded_file}"'
+        print("cmd: " + cmd, " > ", unpack_file)
+        try:
+            with open(unpack_file, 'w') as f:
+                returncode = subprocess.call(cmd, shell=True, stdout=f)
+        except subprocess.CalledProcessError as exc:
+            print("Unpacking NVS partition failed with " + str(exc))
+            return (False, "")
+    return (True, unpack_dir)
+
+
+
+def command_download_nvs(*args, **kwargs):
+    info = get_fs_type_start_and_length([SUBTYPE_NVS])
+    download_ok, downloaded_file = download_fs(info)
+    unpack_ok, unpacked_dir = unpack_nvs(downloaded_file)
+    if unpack_ok is True:
+        display_fs(unpacked_dir)
+
+
+env.AddCustomTarget(
+    name="downloadnvs",
+    dependencies=None,
+    actions=[
+        command_download_nvs
+    ],
+    title="Download NVS partition",
+    description="Downloads and parses NVS partition stored on ESP32."
+)
+
+def command_dump_environment(*args, **kwargs):
+    env_dump_file = env.GetProjectOption("custom_env_dump_file", "env_dump.txt")
+    print("env_dump_file: ", env_dump_file)
+    #print("os.path.dirname(env_dump_file): ", os.path.dirname(env_dump_file))
+    #print("os.path.abspath(env_dump_file): ", os.path.abspath(env_dump_file))
+    #print("os.path.dirname(os.path.abspath(env_dump_file)): ", os.path.dirname(os.path.abspath(env_dump_file)))
+    unpack_dir=os.path.dirname(env_dump_file)
+    #unpack_dir=os.path.dirname(os.path.abspath(env_dump_file))
+    print("unpack_dir: ", unpack_dir)
+    unpack_dir_empty = len(str(unpack_dir).strip())==0
+    print("unpack_dir is empty: ", unpack_dir_empty)
+    if not unpack_dir_empty:
+        print("os.path.exists(unpack_dir): ",os.path.exists(unpack_dir))
+        if not os.path.exists(unpack_dir):
+            print("creating directory: ", unpack_dir)
+            os.makedirs(unpack_dir,exist_ok=True)
+    with open(env_dump_file, 'w') as f:
+        print("writing env.Dump() to ", env_dump_file)
+        print(env.Dump(), file=f)  # Python 3.x
+
+env.AddCustomTarget(
+    name="dumpEnv",
+    dependencies=None,
+    actions=[
+        command_dump_environment
+    ],
+    title="dump environment",
+    description="dumps/prints environment to file given as option 'env_dump_file', default: env_dump_file.txt"
+)
+

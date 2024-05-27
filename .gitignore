@@ -1,6 +1,8 @@
 # don't check in credentials
 data/
 unpacked_fs/
+unpacked_nvs/
+env_dump.txt
 src/secrets.h
 secrets.h
 wifi_config.h

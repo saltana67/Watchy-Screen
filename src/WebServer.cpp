@@ -24,7 +24,7 @@ namespace Watchy_WebServer {
     }
 
     void onRoot(AsyncWebServerRequest *request) {
-        AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", INDEX_GZ, sizeof(INDEX_GZ));
+        AsyncWebServerResponse *response = request->beginResponse(200, "text/html", INDEX_GZ, sizeof(INDEX_GZ));
         response->addHeader("Content-Encoding", "gzip");
         request->send(response);
     }

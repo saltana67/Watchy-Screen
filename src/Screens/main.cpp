@@ -48,6 +48,7 @@
 #include "WebServer.h"
 #include "WebServerScreen.h"
 #include "AirplaneModeScreen.h"
+#include "CalendarScreen.h"
 
 
 TestScreen testScreen;
@@ -92,7 +93,7 @@ AnalogGabel_V2 analogGabel_V2Screen;
 Maze4Watchy maze4WatchyScreen;
 QRCodeScreen qrCodeScreen;
 TimezoneScreen timezoneScreen;
-
+CalendarScreen calendarScreen;
 WeatherScreen weatherScreen;
 WeatherForecastScreen weatherForecastScreen;
 MoonScreen moonScreen;
@@ -126,6 +127,7 @@ WrappedTextScreen wrappedTextScreen(
 CarouselItem carouselItems[] = {
                                 {&sevenSegScreen, nullptr},
                                 {&chronometerScreen, nullptr},
+                                {&calendarScreen, nullptr},
                                 {&analogGabel_V2Screen, nullptr},
                                 {&tetrisScreen, nullptr},
                                 {&badForEyeScreen, nullptr},

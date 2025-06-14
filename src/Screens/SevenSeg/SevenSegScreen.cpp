@@ -12,6 +12,7 @@
 using namespace Watchy;
 
 #define DARKMODE false //true
+RTC_DATA_ATTR boolean SevenSegScreen::darkMode = DARKMODE;
 
 const uint8_t BATTERY_SEGMENT_COUNT = 3;
 const uint8_t BATTERY_SEGMENT_WIDTH = 7;
@@ -26,9 +27,16 @@ void SevenSegScreen::show() {
     log_d("show called");
     Watchy::RTC.setRefresh(RTC_REFRESH_MIN);
 
-    display.fillScreen(DARKMODE ? GxEPD_BLACK : GxEPD_WHITE);
-    display.setTextColor(DARKMODE ? GxEPD_WHITE : GxEPD_BLACK);
-    
+    uint16_t fgColor = darkMode ? GxEPD_WHITE : GxEPD_BLACK;
+    uint16_t bgColor = darkMode ? GxEPD_BLACK : GxEPD_WHITE;
+
+    display.fillScreen(bgColor);
+    display.setTextColor(fgColor);
+
+    log_d("darkMode: %d", darkMode);
+    if( Watchy::display.epd2.darkBorder != darkMode )
+        Watchy::display.epd2.setDarkBorder(darkMode);
+
     tm localTime;
     time_t tNow = now();
     localtime_r(&tNow, &localTime);
@@ -43,11 +51,11 @@ void SevenSegScreen::show() {
         //width is 38
         //middle point is 100+(38/2)=119
         //start for airplane mode on is at 119-(21/2)=109
-        display.drawBitmap(109, 75, airplane_mode_on21x21, 21, 21, DARKMODE ? GxEPD_WHITE : GxEPD_BLACK );
+        display.drawBitmap(109, 75, airplane_mode_on21x21, 21, 21, fgColor );
     }else{
-        display.drawBitmap(120, 77, WIFI_CONFIGURED ? wifi : wifioff, 26, 18, DARKMODE ? GxEPD_WHITE : GxEPD_BLACK);
+        display.drawBitmap(120, 77, WIFI_CONFIGURED ? wifi : wifioff, 26, 18, fgColor);
         if(BLE_CONFIGURED){
-            display.drawBitmap(100, 75, bluetooth13x21, 13, 21, DARKMODE ? GxEPD_WHITE : GxEPD_BLACK);
+            display.drawBitmap(100, 75, bluetooth13x21, 13, 21, fgColor);
         }
     }
 }
@@ -104,19 +112,24 @@ void SevenSegScreen::drawDate(tm &currentTime){
 }
 
 void SevenSegScreen::drawSteps(){
+    uint16_t fgColor = darkMode ? GxEPD_WHITE : GxEPD_BLACK;
+    uint16_t bgColor = darkMode ? GxEPD_BLACK : GxEPD_WHITE;
+
     // reset step counter at midnight
     if (currentTime.Hour == 0 && currentTime.Minute == 0){
       sensor.resetStepCounter();
     }
     uint32_t stepCount = sensor.getCounter();
-    display.drawBitmap(10, 165, steps19x23, 19, 23, DARKMODE ? GxEPD_WHITE : GxEPD_BLACK);
+    display.drawBitmap(10, 165, steps19x23, 19, 23, fgColor);
     display.setCursor(35, 190);
     display.println(stepCount);
 }
 
 void SevenSegScreen::drawBattery(){
-    display.drawBitmap(154, 73, battery37x21, 37, 21, DARKMODE ? GxEPD_WHITE : GxEPD_BLACK);
-    display.fillRect(159, 78, 27, BATTERY_SEGMENT_HEIGHT, DARKMODE ? GxEPD_BLACK : GxEPD_WHITE);//clear battery segments
+    uint16_t fgColor = darkMode ? GxEPD_WHITE : GxEPD_BLACK;
+    uint16_t bgColor = darkMode ? GxEPD_BLACK : GxEPD_WHITE;
+    display.drawBitmap(154, 73, battery37x21, 37, 21, fgColor);
+    display.fillRect(159, 78, 27, BATTERY_SEGMENT_HEIGHT, bgColor);//clear battery segments
     int8_t batteryLevel = 0;
     float VBAT = getBatteryVoltage();
 /* 
@@ -161,11 +174,14 @@ void SevenSegScreen::drawBattery(){
         if( segmentWidth < 1 )
             break;
         log_d("batterySegment: %d, fillWidth: %d, segmentWidth: %d", batterySegment, fillWidth, segmentWidth);
-        display.fillRect(159 + (batterySegment * BATTERY_SEGMENT_SPACING), 78, segmentWidth, BATTERY_SEGMENT_HEIGHT, DARKMODE ? GxEPD_WHITE : GxEPD_BLACK);
+        display.fillRect(159 + (batterySegment * BATTERY_SEGMENT_SPACING), 78, segmentWidth, BATTERY_SEGMENT_HEIGHT, fgColor);
     }
 }
 
 void SevenSegScreen::drawWeather(){
+
+    uint16_t fgColor = darkMode ? GxEPD_WHITE : GxEPD_BLACK;
+    uint16_t bgColor = darkMode ? GxEPD_BLACK : GxEPD_WHITE;
 
     Watchy_GetWeather::weatherData currentWeather = Watchy_GetWeather::getWeather();
 
@@ -189,7 +205,7 @@ void SevenSegScreen::drawWeather(){
     if (strcmp(Watchy_GetWeather::TEMP_UNIT, "imperial") == 0 ) 
         isMetric = false;
     
-    display.drawBitmap(165, 110, isMetric ? celsius : fahrenheit, 26, 20, DARKMODE ? GxEPD_WHITE : GxEPD_BLACK);
+    display.drawBitmap(165, 110, isMetric ? celsius : fahrenheit, 26, 20, fgColor);
     const unsigned char* weatherIcon;
 
     //https://openweathermap.org/weather-conditions
@@ -211,7 +227,7 @@ void SevenSegScreen::drawWeather(){
     weatherIcon = thunderstorm;
     }else
     return;
-    display.drawBitmap(145, 158, weatherIcon, WEATHER_ICON_WIDTH, WEATHER_ICON_HEIGHT, DARKMODE ? GxEPD_WHITE : GxEPD_BLACK);
+    display.drawBitmap(145, 158, weatherIcon, WEATHER_ICON_WIDTH, WEATHER_ICON_HEIGHT, fgColor);
 }
 
 /*
@@ -227,8 +243,11 @@ void TestScreen::back() {
     log_d("back called, calling super");
     Screen::back();
 }
-
-void TestScreen::menu() {
-    log_d("menu called");
-}
 */
+void SevenSegScreen::menu() {
+    log_d("darkMode: %d", darkMode);
+    darkMode = darkMode ? false : true;
+    log_d("darkMode toggled: %d", darkMode);
+
+    Watchy::showWatchFace(true);
+}

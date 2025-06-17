@@ -43,3 +43,13 @@ void ShowOrientationScreen::show() {
   }
   Watchy::display.printf("\npress back to exit");
 }
+
+void ShowOrientationScreen::menu() {
+  uint16_t status;
+  uint16_t erroCode;
+
+  status    = Watchy::sensor.getStatus();
+  erroCode  = Watchy::sensor.getErrorCode();
+
+  log_d("sensor: status: %hu, erroCode: %hu", status, erroCode);
+}

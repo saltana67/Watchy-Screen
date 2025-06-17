@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-export IDF_PATH=/home/adam/.platformio/packages/framework-espidf
+export IDF_PATH=~/.platformio/packages/framework-espidf
 
 
 PARTTOOL_PY="python ${IDF_PATH}/components/partition_table/parttool.py"

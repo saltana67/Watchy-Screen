@@ -62,7 +62,8 @@ Services
 
 class SSIDChanged : public BLECharacteristicCallbacks {
   public:
-   void onWrite(BLECharacteristic *pCharacteristic) override {
+   //void onWrite(BLECharacteristic *pCharacteristic) override {
+   void onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) override {
     /*
      wifi_config_t conf;
      esp_err_t ret = esp_wifi_get_config(ESP_IF_WIFI_STA, &conf);
@@ -113,7 +114,8 @@ class SSIDChanged : public BLECharacteristicCallbacks {
 
 class PasswordChanged : public BLECharacteristicCallbacks {
   public:
-   void onWrite(BLECharacteristic *pCharacteristic) override {
+   //void onWrite(BLECharacteristic *pCharacteristic) override {
+   void onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) override {
      /*
      wifi_config_t conf;
      esp_err_t ret = esp_wifi_get_config(ESP_IF_WIFI_STA, &conf);
@@ -214,11 +216,13 @@ Watchy_Event::BackgroundTask advertiseBLE("advertiseBLE", []() {
   // working for backward compatibility
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(WIFI_SERVICE_UUID);
-  pAdvertising->setScanResponse(true);
+  //pAdvertising->setScanResponse(true);
+  pAdvertising->enableScanResponse(true);
 
   // functions that help with iPhone connections issue
-  pAdvertising->setMinPreferred(0x06);
-  pAdvertising->setMaxPreferred(0x12);
+  //pAdvertising->setMinPreferred(0x06);
+  //pAdvertising->setMaxPreferred(0x12);
+  pAdvertising->setPreferredParams(0x06,0x12);
 
   BLEDevice::startAdvertising();
   vTaskDelay(portMAX_DELAY);

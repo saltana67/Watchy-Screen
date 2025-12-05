@@ -1,5 +1,6 @@
 #include "CalendarScreen.h"
 
+#include "OptimaLTStd12pt7b.h"
 
 #define GREY 0x7BEF
 using namespace Watchy;
@@ -89,11 +90,28 @@ void CalendarScreen::drawWatchFace(){
     //ErrSunMonTueWedThuFriSat
     //0  1  2  3  4  5  6  7
     //   1  2  3  4  5  6  0
-    String wDay = dayShortStr(localTime.tm_wday==0?7:localTime.tm_wday);
-    wDay = wDay.substring(0,wDay.length() - 1);
+    //   0  1  2  3  4  5  6
+    String dayOfWeekShort = dayShortStr(localTime.tm_wday==0?7:localTime.tm_wday);
+    String dayOfWeekShort2 = dayOfWeekShort.substring(0,dayOfWeekShort.length() - 1);
     String dayOfWeek = dayStr(localTime.tm_wday+1);
 
-    log_d("localTime.tm_wday: %d, localTime.tm_mday: %d, wDay: %s, dayOfWeek: %s", localTime.tm_wday, localTime.tm_mday, wDay.c_str(), dayOfWeek.c_str());
+    display.setFont(OptimaLTStd12pt7b);
+    x=dX, y=50;
+    int wdayI = localTime.tm_wday==0?7:localTime.tm_wday ;
+
+    for(int i = 0; i < 7; i++){
+      dayOfWeekShort = dayShortStr(i+1);
+      dayOfWeekShort2 = dayOfWeekShort.substring(0,dayOfWeekShort.length() - 1);
+      log_d("i: %d, x: %d, y: %d, dayOfWeekShort: %s, dayOfWeekShort2: %s", i, x,y, dayOfWeekShort.c_str(), dayOfWeekShort2.c_str());
+      display.setCursor(x,y);
+      display.print(dayOfWeekShort2);
+      x += dX;
+    }
+
+    int wDay = localTime.tm_wday;
+    int wDayI = (wDay==0?7:wDay)-1;
+    
+    log_d("localTime.tm_wday: %d, localTime.tm_mday: %d, dayOfWeekShort2: %s, dayOfWeek: %s", localTime.tm_wday, localTime.tm_mday, dayOfWeekShort2.c_str(), dayOfWeek.c_str());
     
 }
 

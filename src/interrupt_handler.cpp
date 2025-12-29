@@ -40,11 +40,13 @@ void IRAM_ATTR ISR_MenuButtonPress() {
     bounces++;
     return;
   }
-  ISR_Send(Watchy_Event::Event{
+/*   ISR_Send(Watchy_Event::Event{
       .id = Watchy_Event::MENU_BTN_DOWN,
       .micros = lastIntTime,
       {.bounces = bounces},
   });
+ */
+  ISR_Send(Watchy_Event::Event::ButtonDown(Watchy_Event::MENU_BTN_DOWN, lastIntTime, bounces));
 }
 
 void IRAM_ATTR ISR_BackButtonPress() {
@@ -54,11 +56,13 @@ void IRAM_ATTR ISR_BackButtonPress() {
     bounces++;
     return;
   }
-  ISR_Send(Watchy_Event::Event{
+/*   ISR_Send(Watchy_Event::Event{
       .id = Watchy_Event::BACK_BTN_DOWN,
       .micros = lastIntTime,
       {.bounces = bounces},
   });
+ */  
+  ISR_Send(Watchy_Event::Event::ButtonDown(Watchy_Event::BACK_BTN_DOWN, lastIntTime, bounces));
 }
 
 void IRAM_ATTR ISR_UpButtonPress() {
@@ -68,11 +72,14 @@ void IRAM_ATTR ISR_UpButtonPress() {
     bounces++;
     return;
   }
+  /*   
   ISR_Send(Watchy_Event::Event{
       .id = Watchy_Event::UP_BTN_DOWN,
       .micros = lastIntTime,
       {.bounces = bounces},
   });
+  */  
+  ISR_Send(Watchy_Event::Event::ButtonDown(Watchy_Event::UP_BTN_DOWN, lastIntTime, bounces));
 }
 
 void IRAM_ATTR ISR_DownButtonPress() {
@@ -82,15 +89,16 @@ void IRAM_ATTR ISR_DownButtonPress() {
     bounces++;
     return;
   }
-  ISR_Send(Watchy_Event::Event{
-      .id = Watchy_Event::DOWN_BTN_DOWN,
-      .micros = lastIntTime,
-      {.bounces = bounces},
-  });
+  // ISR_Send(Watchy_Event::Event{
+  //     .id = Watchy_Event::DOWN_BTN_DOWN,
+  //     .micros = lastIntTime,
+  //     {.bounces = bounces},
+  // });
+  ISR_Send(Watchy_Event::Event::ButtonDown(Watchy_Event::DOWN_BTN_DOWN, lastIntTime, bounces));
 }
 
 void timerSetup() {
-  attachInterrupt(RTC_PIN, ISR_RTC, GPIO_INTR_POSEDGE);
+  attachInterrupt(RTC_INT_PIN, ISR_RTC, GPIO_INTR_POSEDGE);
 }
 
 void buttonSetup(int pin, ButtonIndex index) {

@@ -817,9 +817,10 @@ void getLocation() {
       loc.timezone = getPosixTZforOlson(olsonTZ);
       if ( loc.timezone ) {
         Watchy_Event::Event{
-            .id = Watchy_Event::LOCATION_UPDATE,
-            .micros = micros(),
-            {.loc = loc},
+            /*.id = */Watchy_Event::LOCATION_UPDATE,
+            /*.micros = */micros(),
+            /*{.loc = loc}*/
+            {.loc = loc}
         }.send();
         lastGetLocationTS = now();
         Watchy::err = Watchy::OK;

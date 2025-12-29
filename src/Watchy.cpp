@@ -37,7 +37,14 @@ WiFiMulti wifiMulti;
 
 void handleButtonPress() {
   uint64_t wakeupBit = esp_sleep_get_ext1_wakeup_status();
-  switch (wakeupBit & BTN_PIN_MASK) {
+  //log_d("sizeof BTN_PIN_MASK: %d, value: 0x%llX", sizeof(BTN_PIN_MASK),(uint64_t)BTN_PIN_MASK);
+  uint64_t wakeupBitAndBtnMask = wakeupBit & ((uint64_t)BTN_PIN_MASK);
+  // log_d("wakeupBit: 0x%016llX BTN_PIN_MASK: 0x%016llX wakeupBitAndBtnMask: 0x%016llX", wakeupBit, BTN_PIN_MASK, wakeupBitAndBtnMask );
+  // log_d("MENU_BTN_MASK: size: %d value: 0x%016llX, equals wakeupBitAndBtnMask? : %s", sizeof(MENU_BTN_MASK), MENU_BTN_MASK, MENU_BTN_MASK==wakeupBitAndBtnMask?"true":"false");
+  // log_d("BACK_BTN_MASK: size: %d value: 0x%016llX, equals wakeupBitAndBtnMask? : %s", sizeof(BACK_BTN_MASK), BACK_BTN_MASK, BACK_BTN_MASK==wakeupBitAndBtnMask?"true":"false");
+  // log_d("UP_BTN_MASK  : size: %d value: 0x%016llX, equals wakeupBitAndBtnMask? : %s", sizeof(UP_BTN_MASK)  , UP_BTN_MASK  , UP_BTN_MASK  ==wakeupBitAndBtnMask?"true":"false");
+  // log_d("DOWN_BTN_MASK: size: %d value: 0x%016llX, equals wakeupBitAndBtnMask? : %s", sizeof(DOWN_BTN_MASK), DOWN_BTN_MASK, DOWN_BTN_MASK==wakeupBitAndBtnMask?"true":"false");
+  switch (wakeupBitAndBtnMask) {
     case MENU_BTN_MASK:
       Watchy_Event::Event{
           .id = Watchy_Event::MENU_BTN_DOWN,
@@ -45,6 +52,7 @@ void handleButtonPress() {
       }.send();
       break;
     case BACK_BTN_MASK:
+      //log_d("BACK_BTN detected, sending BACK_BTN_DOWN");
       Watchy_Event::Event{
           .id = Watchy_Event::BACK_BTN_DOWN,
           .micros = micros(),
@@ -63,13 +71,17 @@ void handleButtonPress() {
       }.send();
       break;
     default:
-      sensor.getINT();
-      boolean accInterrupt = sensor.isDoubleClick();
-      log_d("accInterrupt: %d",accInterrupt);
-      Watchy_Event::Event{
-          .id = Watchy_Event::DOWN_BTN_DOWN,
-          .micros = micros(),
-      }.send();
+      boolean accInterrupt = sensor.getINT();
+      boolean accIsDoubleClick = sensor.isDoubleClick();
+      log_d("accInterrupt: %d, isDoubleClick: %d",accInterrupt, accIsDoubleClick);
+      if( accInterrupt ) {
+        if( accIsDoubleClick ){
+          Watchy_Event::Event{
+              .id = Watchy_Event::DOWN_BTN_DOWN,
+              .micros = micros(),
+          }.send();
+        }
+      }
       break;
   }
 }

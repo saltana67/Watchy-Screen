@@ -1,11 +1,11 @@
 #include "WebServerScreen.h"
 
 #include <Arduino_JSON.h>
+#include <WiFi.h>
 
 #include "OptimaLTStd12pt7b.h"
 #include "Watchy.h"
 #include "WebServer.h"
-
 
 void WebServerScreen::show() {
   Watchy::RTC.setRefresh(RTC_REFRESH_NONE);

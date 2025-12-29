@@ -40,6 +40,9 @@ class Event {
     timeval tv; // TIME_SYNC
     int bounces; // BTN_DOWN
   };
+  static Event TimeSync(uint64_t usec, const timeval& tv_val);
+  static Event ButtonDown(ID button_event_id, uint64_t lastIntTime, const int bounces);
+
   void send();
   void handle();
   static void handleAll();

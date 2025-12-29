@@ -129,7 +129,7 @@ void WatchyRTC::setRefresh(RTC_REFRESH_t r){
     log_i("setting alarm for next minute: %d", next_minute);
     rtc_pcf.setAlarm(next_minute, RTCC_NO_ALARM, RTCC_NO_ALARM, RTCC_NO_ALARM);
 
-    esp_sleep_enable_ext0_wakeup(RTC_PIN, 0);
+    esp_sleep_enable_ext0_wakeup(static_cast<gpio_num_t>(RTC_INT_PIN), 0);
   }else if( r == RTC_REFRESH_NONE ){
     esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_EXT0);
   }else if( r == RTC_REFRESH_FAST ){

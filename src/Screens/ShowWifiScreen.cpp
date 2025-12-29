@@ -1,8 +1,12 @@
 #include "ShowWifiScreen.h"
 
+#include <WiFi.h>
+
 #include "OptimaLTStd12pt7b.h"
 #include "Watchy.h"
 #include "esp_wifi.h"
+// /home/adam/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src/WiFiType.h
+#include "WiFiType.h"
 
 void ShowWifiScreen::show() {
   Watchy::RTC.setRefresh(RTC_REFRESH_NONE);

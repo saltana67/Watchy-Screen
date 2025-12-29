@@ -34,6 +34,21 @@ const char * IDtoString(ID id) {
 // from deep sleeping while we're running.
 BackgroundTask handlerTask("handler", nullptr);
 
+Event Event::TimeSync(uint64_t usec, const timeval& tv_val) {
+        Event e;
+        e.id = TIME_SYNC;
+        e.micros = usec;
+        e.tv = tv_val;  // Direct assignment to union member
+        return e;
+}
+Event Event::ButtonDown(ID button_event_id, uint64_t lastIntTime, const int bounces) {
+        Event e;
+        e.id = button_event_id;
+        e.micros = lastIntTime;
+        e.bounces = bounces;  // Direct assignment to union member
+        return e;
+}
+
 void Event::handle() {
   log_i("%6d handle event %s", millis(), IDtoString(id));
   if (Watchy::screen != nullptr) {

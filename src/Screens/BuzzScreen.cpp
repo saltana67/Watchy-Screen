@@ -5,7 +5,11 @@
 #include "driver/ledc.h"
 #include "esp_err.h"
 
-#include "hulp.h"
+#if defined(__has_include)
+# if __has_include("hulp.h")
+#   include "hulp.h"
+# endif
+#endif
 
 
 void buzz_gpio(){
@@ -24,6 +28,7 @@ void buzz_gpio(){
 
 const gpio_num_t VIB_MOTOR_GPIO_NUM = GPIO_NUM_13;
 
+#ifdef HULP_H
 const ulp_insn_t program[] = {
   I_MOVI(R2,0),
   M_UPDATE_TICKS(),
@@ -76,6 +81,7 @@ void buzz_ulp(){
   ESP_ERROR_CHECK(hulp_ulp_load(program, sizeof(program), 1ULL * 10 * 1000, 0));
   ESP_ERROR_CHECK(hulp_ulp_run(0));
 }
+#endif
 
 void buzz_ledc(){
   pinMode(VIB_MOTOR_PIN, OUTPUT);

@@ -1,59 +1,195 @@
 #include "battery.h"
 
-#include <esp_adc_cal.h>
+#include <esp_adc/adc_oneshot.h>
+#include <esp_adc/adc_cali.h>
+#include <esp_adc/adc_cali_scheme.h>
+
+#include "esp_err.h"
 
 #include "Watchy.h"  // for logging macros
 
 namespace Watchy {
 
-esp_adc_cal_characteristics_t *getADCCharacteristics() {
-  static esp_adc_cal_characteristics_t *adc_chars;  // default is nullptr
-  if (!adc_chars) {
-    // only initialize it if we're actually going to use it.
-    adc_chars = new esp_adc_cal_characteristics_t();
-    adc1_config_width(ADC_WIDTH_BIT_12);
-    adc1_config_channel_atten(ADC1_CHANNEL_6, ADC_ATTEN_DB_12);
-    esp_adc_cal_value_t cal = esp_adc_cal_characterize(
-        ADC_UNIT_1, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, 1100, adc_chars);
-    if (cal == ESP_ADC_CAL_VAL_DEFAULT_VREF) {
-      log_w("adc calibration is using default vref. Accuracy will suffer.");
+
+struct BattAdc {
+    adc_oneshot_unit_handle_t adc_handle;
+    adc_cali_handle_t         cali_handle;
+    bool cali_enabled;
+    bool initialized;
+};
+
+static struct BattAdc batt_adc = {0};
+
+static uint32_t batt_adc_reading_delay_ms = 10; //milliseconds
+static double   batt_adc_voltage_divider = 2.0;
+
+static void init_batt_adc() {
+    if (batt_adc.initialized) return;
+
+     // 1. Create ADC unit
+    adc_oneshot_unit_init_cfg_t unit_cfg = {
+        .unit_id  = BATT_ADC_UNIT,
+        .ulp_mode = ADC_ULP_MODE_DISABLE,
+    };
+    if (adc_oneshot_new_unit(&unit_cfg, &batt_adc.adc_handle) != ESP_OK) {
+        log_e("ADC unit init failed");
+        return;
     }
-  }
-  return adc_chars;
+
+    // 2. Configure channel
+    adc_oneshot_chan_cfg_t chan_cfg = {
+        .atten    = BATT_ATTEN,
+        .bitwidth = ADC_BITWIDTH_DEFAULT,
+    };
+    if (adc_oneshot_config_channel(batt_adc.adc_handle, BATT_ADC_CHANNEL, &chan_cfg) != ESP_OK) {
+        log_e("ADC channel config failed");
+        adc_oneshot_del_unit(batt_adc.adc_handle);
+        return;
+    }
+
+    // 3. Initialize calibration
+#if ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED
+    adc_cali_curve_fitting_config_t cali_cfg = {
+        .unit_id  = BATT_ADC_UNIT,
+        .chan     = BATT_ADC_CHANNEL,
+        .atten    = BATT_ATTEN,
+        .bitwidth = ADC_BITWIDTH_DEFAULT,
+    };
+    if (adc_cali_create_scheme_curve_fitting(&cali_cfg, &batt_adc.cali_handle) == ESP_OK) {
+        batt_adc.cali_enabled = true;
+    }
+#elif ADC_CALI_SCHEME_LINE_FITTING_SUPPORTED
+    adc_cali_line_fitting_config_t cali_cfg = {
+        .unit_id  = BATT_ADC_UNIT,
+        .atten    = BATT_ATTEN,
+        .bitwidth = ADC_BITWIDTH_DEFAULT,
+    };
+    if (adc_cali_create_scheme_line_fitting(&cali_cfg, &batt_adc.cali_handle) == ESP_OK) {
+        batt_adc.cali_enabled = true;
+    }
+#endif
+
+    batt_adc.initialized = true;
 }
 
+static void deinit_batt_adc() {
+    if (!batt_adc.initialized) return;
+
+#if ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED
+    if (batt_adc.cali_handle) {
+        adc_cali_delete_scheme_curve_fitting(batt_adc.cali_handle);
+    }
+#elif ADC_CALI_SCHEME_LINE_FITTING_SUPPORTED
+    if (batt_adc.cali_handle) {
+        adc_cali_delete_scheme_line_fitting(batt_adc.cali_handle);
+    }
+#endif
+    if (batt_adc.adc_handle) {
+        adc_oneshot_del_unit(batt_adc.adc_handle);
+    }
+    batt_adc = (struct BattAdc){0};
+}
+
+
+// Read battery voltage
 float getBatteryVoltage() {
-  // make sure ADC is initialized before we read it.
-  esp_adc_cal_characteristics_t *adcChar = getADCCharacteristics();
-  // average 4 samples to reduce noise
-  int rawAdcVals[] = {0,0,0,0};
-  int rawAvg = 0;
-  for( uint8_t i = 0; i<4; i++){
-    rawAdcVals[i] = adc1_get_raw(ADC1_CHANNEL_6);
-    rawAvg += rawAdcVals[i];
-    log_d("rawAdcVals[%d]: %d", i, rawAdcVals[i]);
-  }
-  rawAvg /= 4;
-  log_d("rawAvg: %d", rawAvg);
-  uint32_t rawAvgCalibrated = esp_adc_cal_raw_to_voltage(rawAvg, adcChar);
-  log_d("rawAvgCalibrated: %d", rawAvgCalibrated);
-  float newVolt = rawAvgCalibrated * 2.0 / 1000.0;
-  log_d("newVolt: %f", newVolt);
 
-  int raw =
-      (adc1_get_raw(ADC1_CHANNEL_6) + adc1_get_raw(ADC1_CHANNEL_6) +
-       adc1_get_raw(ADC1_CHANNEL_6) + adc1_get_raw(ADC1_CHANNEL_6) +
-       2) /
-      4;
-  log_d("raw: %d", raw);
-  uint32_t rawCalibrated = esp_adc_cal_raw_to_voltage(raw, adcChar);
-  log_d("raw calibrated: %d", rawCalibrated);
-  
-  float volt = rawCalibrated * 2.0 / 1000.0;
-  log_d("volt: %f", volt);
+    // make sure ADC is initialized before we read it.
+    init_batt_adc();
+    if (!batt_adc.initialized) {
+      log_e("!batt_adc.initialized");
+      return -1;
+    }
 
-  return volt;
+    // average more sample samples reduce noise
+    const int numReadings = 10;
+    int       max_tries   = 2*numReadings;
+    int       validReadings       = 0;
+    int       tries       = 0;
+    if (max_tries < numReadings) max_tries = numReadings;
+
+    int rawAdcVals[numReadings];
+    
+
+    // Take multiple readings for averaging
+    while (validReadings < numReadings && tries < max_tries) {
+        if (adc_oneshot_read(batt_adc.adc_handle, BATT_ADC_CHANNEL, &rawAdcVals[validReadings]) == ESP_OK) {
+            validReadings++;
+        }
+        tries++;        
+        if (tries < max_tries) {
+            delay(batt_adc_reading_delay_ms);
+        }
+    }
+    // ignore outliers to further reduce noise
+    const double outliersFactor = 0.2; // drop 20% on both end of sample spectrum
+    int outliers = (int)(((double)(validReadings))*outliersFactor); //number of outlier values to drop from both ends
+    // if outliers handling, sort the values to have outliers at the both ends
+    if( outliers > 0 ){
+      std::sort(rawAdcVals, rawAdcVals + validReadings);
+    }
+    // average middle values, ignore outliers if any
+    int sum = 0;
+    for (int i = (0+outliers); i < (validReadings-outliers); i++) { // Use middle values
+        sum += rawAdcVals[i];
+    }
+    int adcAvgVal = sum / (validReadings-(2*outliers));
+    log_d("adcAvgVal: %d", adcAvgVal);
+
+    // Convert raw ADC reading to voltage in mV
+    int millivoltsCalibrated = adcAvgVal * 3300 / 4095; //approximation for fallback, another proposal: (adcAvgVal * 2450) / 4095
+
+    if (batt_adc.cali_enabled) {
+        int mv;
+        esp_err_t err = adc_cali_raw_to_voltage(batt_adc.cali_handle, adcAvgVal, &mv);
+        if( err == ESP_OK) {
+            log_d("adc_cali_raw_to_voltage() done!");
+            millivoltsCalibrated = mv;
+        }else{
+            log_w("adc_cali_raw_to_voltage() error", err);
+        };
+    }
+
+    log_d("millivoltsCalibrated: %d", millivoltsCalibrated);
+    //
+    float volts = millivoltsCalibrated * batt_adc_voltage_divider / 1000.0;
+    log_d("volts: %f", volts);
+
+    return volts; // Return in volts
 }
+
+// float getBatteryVoltage() {
+//   // make sure ADC is initialized before we read it.
+//   esp_adc_cal_characteristics_t *adcChar = getADCCharacteristics();
+//   // average 4 samples to reduce noise
+//   int rawAdcVals[] = {0,0,0,0};
+//   int rawAvg = 0;
+//   for( uint8_t i = 0; i<4; i++){
+//     rawAdcVals[i] = adc1_get_raw(ADC1_CHANNEL_6);
+//     rawAvg += rawAdcVals[i];
+//     log_d("rawAdcVals[%d]: %d", i, rawAdcVals[i]);
+//   }
+//   rawAvg /= 4;
+//   log_d("rawAvg: %d", rawAvg);
+//   uint32_t rawAvgCalibrated = esp_adc_cal_raw_to_voltage(rawAvg, adcChar);
+//   log_d("rawAvgCalibrated: %d", rawAvgCalibrated);
+//   float newVolt = rawAvgCalibrated * 2.0 / 1000.0;
+//   log_d("newVolt: %f", newVolt);
+
+//   int raw =
+//       (adc1_get_raw(ADC1_CHANNEL_6) + adc1_get_raw(ADC1_CHANNEL_6) +
+//        adc1_get_raw(ADC1_CHANNEL_6) + adc1_get_raw(ADC1_CHANNEL_6) +
+//        2) /
+//       4;
+//   log_d("raw: %d", raw);
+//   uint32_t rawCalibrated = esp_adc_cal_raw_to_voltage(raw, adcChar);
+//   log_d("raw calibrated: %d", rawCalibrated);
+  
+//   float volt = rawCalibrated * 2.0 / 1000.0;
+//   log_d("volt: %f", volt);
+
+//   return volt;
+// }
 
 /*
 | hours|voltage| rngU | rngT|   coeffUT     |  TTL  | Battery|

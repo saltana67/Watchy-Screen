@@ -13,6 +13,7 @@
 #include "config.h"
 #include "Events.h"
 #include "WatchyRTC.h"
+#include "wifictrl.h"
 
 class Screen;
 
@@ -34,19 +35,19 @@ extern void AddOnWakeCallback(const OnWakeCallback owc);
 // no need for a Remove because they're all removed on deep sleep. Any component
 // registering a callback has to do it when it gets initialized on wake...
 
-// these two keep track of references to wifi and only close it when there
-// are no more references to it
-bool getWiFi();
-void releaseWiFi();
-boolean wifiConnectionAttemptAllowed();
-void resetWiFi();
+// // these two keep track of references to wifi and only close it when there
+// // are no more references to it
+// bool getWiFi();
+// void releaseWiFi();
+// boolean wifiConnectionAttemptAllowed();
+// void resetWiFi();
 
 void showWatchFace(bool partialRefresh, Screen *s = Watchy::screen);
 void setScreen(Screen *s);
 
 // stored in RTC_DATA_ATTR
 extern BMA423 sensor;
-extern bool WIFI_CONFIGURED;
-extern bool BLE_CONFIGURED;
-extern bool AIRPLANE_MODE;
+// extern bool WIFI_CONFIGURED;
+// extern bool BLE_CONFIGURED;
+// extern bool AIRPLANE_MODE;
 };  // namespace Watchy
